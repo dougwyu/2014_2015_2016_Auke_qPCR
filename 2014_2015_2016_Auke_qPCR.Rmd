@@ -1,0 +1,860 @@
+---
+title: "2014_2015_2016_Auke_qPCR"
+author: "Douglas Yu"
+date: "10/05/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages}
+library(tidyverse)
+library(broom)
+library(cowplot)
+sessionInfo()
+```
+
+```{r read in datasets and combine, eval = FALSE}
+loadFile1 <- function(salmonspecies, year) { 
+    filename <- str_c(salmonspecies, "long_", year, ".tsv") # Sockeyelong_2014.tsv
+    foldername <- str_c(year, "_Auke_qPCR") # 2014_Auke_qPCR/
+    df <- read_tsv(file.path("..", foldername, "data", filename))
+
+    df$Year <- year # add year columnm
+
+    df # output is df
+}
+
+years <- c("2014", "2015", "2016")
+species <- c("Sockeye", "Coho")
+
+for(year in years) 
+    {
+    for(salmonspecies in species) 
+        {
+        assign(str_c(salmonspecies, "long_", year), loadFile1(salmonspecies, year))
+        }
+    }
+
+# names(Sockeyelong_2014)
+# names(Sockeyelong_2015)
+# names(Sockeyelong_2016)
+# 
+# names(Coholong_2014)
+# names(Coholong_2015)
+# names(Coholong_2016)
+
+Sockeyelong_all <- bind_rows(Sockeyelong_2014, Sockeyelong_2015, Sockeyelong_2016)
+Coholong_all <- bind_rows(Coholong_2014, Coholong_2015, Coholong_2016)
+
+names(Sockeyelong_all)
+names(Coholong_all)
+```
+
+```{r write files, eval = FALSE}
+write_tsv(Sockeyelong_all, "Sockeyelong_all.tsv")
+write_tsv(Coholong_all, "Coholong_all.tsv")
+```
+
+```{r read saved files, eval = FALSE}
+Sockeyelong_all <- read_tsv("Sockeyelong_all.tsv")
+Sockeyelong_all$Year <- as.factor(Sockeyelong_all$Year)
+Coholong_all <- read_tsv("Coholong_all.tsv")
+Coholong_all$Year <- as.factor(Coholong_all$Year)
+
+names(Sockeyelong_all)
+Sockeyelong_all
+names(Coholong_all)
+Coholong_all
+```
+
+```{r data subsets}
+sockeye.adult.start = "06-18"
+sockeye.adult.end = "08-01"
+coho.adult.start = "08-18"  # first appearance of 1 Coho male and 1 Coho female
+coho.adult.end = "10-21"  # 10-21 is last date of 
+
+sockeye.juv.start = "04-15"
+sockeye.juv.end = "06-10"
+coho.juv.start = "04-15"
+coho.juv.end = "06-10"
+
+sockeye_adult <- Sockeyelong_all %>% dplyr::filter(
+    (Date >= as.Date(paste0("2014-",sockeye.adult.start)) & Date <= as.Date(paste0("2014-",sockeye.adult.end)))|
+    (Date >= as.Date(paste0("2015-",sockeye.adult.start)) & Date <= as.Date(paste0("2015-",sockeye.adult.end)))|
+    (Date >= as.Date(paste0("2016-",sockeye.adult.start)) & Date <= as.Date(paste0("2016-",sockeye.adult.end))))
+
+coho_adult <- Coholong_all %>% dplyr::filter(
+    (Date >= as.Date(paste0("2014-",coho.adult.start)) & Date <= as.Date(paste0("2014-",coho.adult.end)))|
+    (Date >= as.Date(paste0("2015-",coho.adult.start)) & Date <= as.Date(paste0("2015-",coho.adult.end)))|
+    (Date >= as.Date(paste0("2016-",coho.adult.start)) & Date <= as.Date(paste0("2016-",coho.adult.end))))
+
+sockeye_juv <- Sockeyelong_all %>% dplyr::filter(
+    (Date >= as.Date(paste0("2014-",sockeye.juv.start)) & Date <= as.Date(paste0("2014-",sockeye.juv.end)))|
+    (Date >= as.Date(paste0("2015-",sockeye.juv.start)) & Date <= as.Date(paste0("2015-",sockeye.juv.end)))|
+    (Date >= as.Date(paste0("2016-",sockeye.juv.start)) & Date <= as.Date(paste0("2016-",sockeye.juv.end))))
+
+coho_juv <- Coholong_all %>% dplyr::filter(
+    (Date >= as.Date(paste0("2014-",coho.juv.start)) & Date <= as.Date(paste0("2014-",coho.juv.end)))|
+    (Date >= as.Date(paste0("2015-",coho.juv.start)) & Date <= as.Date(paste0("2015-",coho.juv.end)))|
+    (Date >= as.Date(paste0("2016-",coho.juv.start)) & Date <= as.Date(paste0("2016-",coho.juv.end))))
+
+
+# calculate a single Q_cfs value from scratch
+sockeye_adult <- sockeye_adult %>% mutate(Q_cfs2 = 7.48*(Gage_Height - 20.33)^2.5) # coefficients are from the excel spreadsheet:  Salmon_2015_qPCR_count_Qcfs_20180504.xlsx
+plot(sockeye_adult$Gage_Height, sockeye_adult$Q_cfs)
+plot(sockeye_adult$Gage_Height, sockeye_adult$Q_cfs2)
+
+coho_adult <- coho_adult %>% mutate(Q_cfs2 = 7.48*(Gage_Height - 20.33)^2.5) # coefficients are from the excel spreadsheet:  Salmon_2015_qPCR_count_Qcfs_20180504.xlsx
+plot(coho_adult$Gage_Height, coho_adult$Q_cfs)
+plot(coho_adult$Gage_Height, coho_adult$Q_cfs2)
+
+                                                   
+# log(salmon) = a + b*C_t + c*log(G) + d*C_t*log(G)
+# log(salmon) = a + C_t(b + d*log(G)) + c*log(G) # d corrects C_t by flow
+```
+
+```{r timelines_full fxn for long data, warning=FALSE}
+timelines_full <- function(salmonspecies, start = "2015-01-01", end = "2015-12-31", type = "_adult") { # x == Sockeye, Coho, y == _adult, _juv
+
+    salmon_use <- get(paste0(salmonspecies, type)) # Sockeye_adult or Coho_adult
+    
+    salmon_use <- salmon_use %>% dplyr::filter(Date >= as.Date(start) & Date <= as.Date(end))  # truncate start and stop times
+    
+    Salmon_type <- str_to_title(paste0(salmonspecies, "type"))
+
+    counts <- ggplot(salmon_use, aes(Date, Count, col = get(Salmon_type))) + geom_point(size = 0.5) + geom_line() + xlab("") + ylab("Salmon Counts") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90") + theme(legend.position = "top")
+        
+    qpcrcorrQ <- ggplot(salmon_use, aes(Date, Qcorr_qPCR)) + geom_point(size = 0.5) + geom_line() + xlab("") + ylab("Qcfs*QUANT") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
+        
+    qpcr <- ggplot(salmon_use, aes(Date, exp(-CT_mean))) + geom_point(size = 0.5) + geom_line() + xlab("") + ylab("exp(qPCR)") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
+        
+    Q_cfs <- ggplot(salmon_use, aes(Date, Q_cfs)) + geom_line() + xlab("") + ylab("Q_cfs") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
+    
+    water <- ggplot(salmon_use, aes(Date, log(Gage_Height))) + geom_line() + xlab("") + ylab("Log(Gage Height)") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
+    
+    temp <- ggplot(salmon_use, aes(Date, Temp_C)) + geom_line() + xlab("") + ylab("Temp_C") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
+    
+    plot_grid(counts, qpcrcorrQ, qpcr, Q_cfs, water, temp, nrow = 6, align = "v")
+}
+```
+
+```{r timelines_full usage}
+timelines_full("sockeye") # use sockeye, not Sockeye 
+timelines_full("sockeye", "2015-06-18", "2015-08-01") # after looking at the full timeline, truncating to 01 Aug to prevent measuring dead-salmon DNA in 2016
+timelines_full("sockeye", "2015-04-15", "2015-06-10", "_juv") # downstream weir dates only for smolts
+timelines_full("coho") # use coho, not Coho
+timelines_full("coho", "2015-06-18", "2015-10-30") # after looking at the full timeline
+timelines_full("coho", "2015-04-15", "2015-06-10", "_juv") # downstream weir dates only 
+```
+
+Sockeye models
+
+```{r linear model}
+sockeye.adult.2015.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015"))
+summary(sockeye.adult.2015.reg)
+
+# sockeye.adult.2015.reg <- lm(Count ~ QUANT_mean:Q_cfs2, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015"))
+# summary(sockeye.adult.2015.reg)
+
+sockeye.adult.2016.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016"))
+summary(sockeye.adult.2016.reg)
+
+tidy(sockeye.adult.2015.reg)
+tidy(sockeye.adult.2016.reg)
+
+# sockeye.adult.2016.reg <- lm(Count ~ QUANT_mean:Q_cfs2, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016"))
+# summary(sockeye.adult.2016.reg)
+
+# with year interaction term.  year interaction is not sig, which is nice
+datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+
+sockeye.adult.reg <- lm((Count) ~ QUANT_mean:Q_cfs2*Year+Temp_C, data = datasubset)
+summary(sockeye.adult.reg)
+
+par(mfrow=c(2,2))
+plot(sockeye.adult.reg)
+par(mfrow=c(1,1))
+glance(sockeye.adult.reg)
+augment(sockeye.adult.reg)
+
+#plot2016
+par(mfrow=c(2,1))
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l')
+
+lines(datasubset$Date[which(datasubset$Year==2016)], (predict(sockeye.adult.reg))[which(datasubset$Year==2016)], lty=2, col="blue")
+
+#plot 2015
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l')
+
+lines(datasubset$Date[which(datasubset$Year==2015)], (predict(sockeye.adult.reg))[which(datasubset$Year==2015)], lty=2, col="blue")
+par(mfrow=c(1,1))
+
+#2015 total and predicted salmon
+sum((predict(sockeye.adult.reg))[which(datasubset$Year==2015)])
+sum(datasubset$Count[which(datasubset$Year==2015)])
+
+#2016 total and predicted salmon
+sum((predict(sockeye.adult.reg))[which(datasubset$Year==2016)])
+sum(datasubset$Count[which(datasubset$Year==2016)])
+```
+
+```{r quasipoisson model}
+sockeye.adult.2015.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015"))
+summary(sockeye.adult.2015.reg)
+
+# sockeye.adult.2015.reg <- glm(Count ~ QUANT_mean:Q_cfs2, family = "quasipoisson", data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015"))
+# summary(sockeye.adult.2015.reg)
+
+sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016"))
+summary(sockeye.adult.2016.reg)
+
+# sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2, family = "quasipoisson", data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016"))
+# summary(sockeye.adult.2016.reg)
+
+tidy(sockeye.adult.2015.reg)
+tidy(sockeye.adult.2016.reg)
+
+# quasipoisson model with year interaction term
+# year interaction is not sig, which is nice
+datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+
+sockeye.adult.reg <- glm(Count ~ QUANT_mean:Q_cfs2*Year+Temp_C, family = "quasipoisson", data = datasubset)
+summary(sockeye.adult.reg)
+tidy(sockeye.adult.reg)
+augment(sockeye.adult.reg)
+
+# testing lagged terms
+# sockeye.adult.reg <- glm(I(QUANT_mean*Q_cfs2)[3:39] ~ Count[1:37] +Count[2:38]+ Temp_C[3:39], family = "quasipoisson", data = datasubset[datasubset$Year==2016,])
+# 
+# sockeye.adult.reg <- glm(I(QUANT_mean*Q_cfs2)[2:39] ~ Count[1:38] + Temp_C[2:39], family = "quasipoisson", data = datasubset[datasubset$Year==2016,])
+# summary(sockeye.adult.reg)
+# augment(sockeye.adult.reg)
+
+```
+
+```{r plot 2015 sockeye}
+par(mfrow=c(2,1),mar=c(2,3,1,1),oma=c(1,3,1,1))
+
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], lwd=2, type='n',pch=19,cex=0.25,ylim=c(0,800),ylab="",xlab="",cex.lab=1.5)
+
+y_up=exp(augment(sockeye.adult.reg)$.fitted + 2*augment(sockeye.adult.reg)$.se.fit)[which(datasubset$Year==2015)]
+ 
+y_down=exp(augment(sockeye.adult.reg)$.fitted - 2*augment(sockeye.adult.reg)$.se.fit)[which(datasubset$Year==2015)]
+
+polygon(c(rev(datasubset$Date[which(datasubset$Year==2015)]),datasubset$Date[which(datasubset$Year==2015)]),c(rev(y_up),y_down),col="grey80",border=NA)
+
+points(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], lwd=2, type='b',pch=19,cex=0.25)
+
+lines(datasubset$Date[which(datasubset$Year==2015)], exp(augment(sockeye.adult.reg)$.fitted)[which(datasubset$Year==2015)], lwd=2,lty=2, col="blue")
+text(datasubset$Date[which(datasubset$Year==2015)][15],750,"2015",cex=1.5)
+
+```
+
+```{r plot 2016 sockeye}
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], lwd=2, type='n',pch=19,cex=0.25,ylim=c(0,800),ylab="",xlab="",cex.lab=1.5)
+
+y_up=exp(augment(sockeye.adult.reg)$.fitted + 2*augment(sockeye.adult.reg)$.se.fit)[which(datasubset$Year==2016)]
+ 
+y_down=exp(augment(sockeye.adult.reg)$.fitted - 2*augment(sockeye.adult.reg)$.se.fit)[which(datasubset$Year==2016)]
+
+polygon(c(rev(datasubset$Date[which(datasubset$Year==2016)]),datasubset$Date[which(datasubset$Year==2016)]),c(rev(y_up),y_down),col="grey80",border=NA)
+
+points(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], lwd=2, type='b',pch=19,cex=0.25)
+
+lines(datasubset$Date[which(datasubset$Year==2016)], exp(augment(sockeye.adult.reg)$.fitted)[which(datasubset$Year==2016)], lwd=2,lty=2, col="blue")
+mtext("Sockeye Counts",side=2,cex=2,outer=T)
+text(datasubset$Date[which(datasubset$Year==2016)][37],750,"2016",cex=1.5)
+# 
+# lines(datasubset$Date[which(datasubset$Year==2016)], exp(augment(sockeye.adult.reg)$.fitted + 2*augment(sockeye.adult.reg)$.se.fit)[which(datasubset$Year==2016)], lwd=2,lty=3, col="darkgray")
+# 
+# lines(datasubset$Date[which(datasubset$Year==2016)], exp(augment(sockeye.adult.reg)$.fitted - 2*augment(sockeye.adult.reg)$.se.fit)[which(datasubset$Year==2016)], lwd=2,lty=3, col="darkgray")
+
+# plot 2015
+# plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='b',pch=19,cex=0.25,ylim=c(0,800),lwd=2,ylab="Sockeye Counts",xlab="")
+# 
+# #add confint augment(sockeye.adult.reg)
+# lines(datasubset$Date[which(datasubset$Year==2015)], exp(augment(sockeye.adult.reg)$.fitted)[which(datasubset$Year==2015)], lwd=2,lty=2, col="blue")
+# 
+# lines(datasubset$Date[which(datasubset$Year==2015)], exp(augment(sockeye.adult.reg)$.fitted + 2*augment(sockeye.adult.reg)$.se.fit)[which(datasubset$Year==2015)], lwd=2,lty=3, col="darkgray")
+# 
+# lines(datasubset$Date[which(datasubset$Year==2015)], exp(augment(sockeye.adult.reg)$.fitted - 2*augment(sockeye.adult.reg)$.se.fit)[which(datasubset$Year==2015)], lwd=2,lty=3, col="darkgray")
+
+###################################
+###################################
+###################################
+
+
+#2015 total and predicted salmon
+sum(exp(predict(sockeye.adult.reg))[which(datasubset$Year==2015)])
+sum(datasubset$Count[which(datasubset$Year==2015)])
+
+#2016 total and predicted salmon
+sum(exp(predict(sockeye.adult.reg))[which(datasubset$Year==2016)])
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+
+```
+
+```{r fit 2016 only model and apply to 2015}
+datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+
+sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = datasubset[datasubset$Year == "2016", ])
+summary(sockeye.adult.2016.reg)
+
+par(mfrow=c(2,1))
+#plot2016
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l')
+
+lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(sockeye.adult.2016.reg)), lty=2, col="blue")
+
+#plot 2015
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l')
+
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+      exp(coef(sockeye.adult.2015.reg)[1]+coef(sockeye.adult.2015.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2015.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2016.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+
+#2015 total and predicted salmon
+sum(exp(predict(sockeye.adult.2016.reg)))
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+#2016 total and predicted salmon
+sum(exp(predict(sockeye.adult.2016.reg))[which(datasubset$Year==2016)])
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+```
+
+
+Coho_adult models
+
+```{r linear model}
+coho.adult.2015.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2015"))
+summary(coho.adult.2015.reg)
+
+# coho.adult.2015.reg <- lm(Count ~ QUANT_mean:Q_cfs2, data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2015"))
+# summary(coho.adult.2015.reg)
+
+coho.adult.2016.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2016"))
+summary(coho.adult.2016.reg)
+
+# coho.adult.2016.reg <- lm(Count ~ QUANT_mean:Q_cfs2, data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2016"))
+# summary(coho.adult.2016.reg)
+
+tidy(coho.adult.2015.reg)
+tidy(coho.adult.2016.reg)
+
+# with year interaction term.  year interaction is not sig, which is nice
+datasubset = subset(coho_adult, Cohotype == "Coho_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+
+coho.adult.reg <- lm((Count) ~ QUANT_mean:Q_cfs2*Year+Temp_C, data = datasubset)
+summary(coho.adult.reg)
+
+par(mfrow=c(2,2))
+plot(coho.adult.reg)
+par(mfrow=c(1,1))
+glance(coho.adult.reg)
+# augment(coho.adult.reg)
+
+#plot2016
+par(mfrow=c(2,1))
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l')
+
+lines(datasubset$Date[which(datasubset$Year==2016)], (predict(coho.adult.reg))[which(datasubset$Year==2016)], lty=2, col="blue")
+
+#plot 2015
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l')
+
+lines(datasubset$Date[which(datasubset$Year==2015)], (predict(coho.adult.reg))[which(datasubset$Year==2015)], lty=2, col="blue")
+par(mfrow=c(1,1))
+
+#2015 total and predicted salmon
+sum((predict(coho.adult.reg))[which(datasubset$Year==2015)])
+sum(datasubset$Count[which(datasubset$Year==2015)])
+
+#2016 total and predicted salmon
+sum((predict(coho.adult.reg))[which(datasubset$Year==2016)])
+sum(datasubset$Count[which(datasubset$Year==2016)])
+```
+
+```{r quasipoisson model}
+coho.adult.2015.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2015"))
+summary(coho.adult.2015.reg)
+
+# coho.adult.2015.reg <- glm(Count ~ QUANT_mean:Q_cfs2, family = "quasipoisson", data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2015"))
+# summary(coho.adult.2015.reg)
+
+coho.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2016"))
+summary(coho.adult.2016.reg)
+
+# coho.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2, family = "quasipoisson", data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2016"))
+# summary(coho.adult.2016.reg)
+
+tidy(coho.adult.2015.reg)
+tidy(coho.adult.2016.reg)
+
+# quasipoisson model with year interaction term
+# year interaction is not sig, which is nice
+datasubset = subset(coho_adult, Cohotype == "Coho_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+
+coho.adult.reg <- glm(Count ~ QUANT_mean:Q_cfs2*Year+Temp_C, family = "quasipoisson", data = datasubset)
+summary(coho.adult.reg)
+tidy(coho.adult.reg)
+# augment(coho.adult.reg)
+
+# testing lagged terms
+# coho.adult.reg <- glm(I(QUANT_mean*Q_cfs2)[3:39] ~ Count[1:37] +Count[2:38]+ Temp_C[3:39], family = "quasipoisson", data = datasubset[datasubset$Year==2016,])
+# 
+# coho.adult.reg <- glm(I(QUANT_mean*Q_cfs2)[2:39] ~ Count[1:38] + Temp_C[2:39], family = "quasipoisson", data = datasubset[datasubset$Year==2016,])
+# summary(coho.adult.reg)
+# augment(coho.adult.reg)
+```
+
+```{r plot 2015 coho}
+par(mfrow=c(2,1),mar=c(2,3,1,1),oma=c(1,3,1,1))
+
+plot(datasubset$Date[which(datasubset$Year==2015)],  datasubset$Count[which(datasubset$Year==2015)], lwd=2, type='n',pch=19,cex=0.25,ylim=c(0,200),ylab="",xlab="",cex.lab=1.5)
+
+y_up=exp(augment(coho.adult.reg)$.fitted + 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2015)]
+ 
+y_down=exp(augment(coho.adult.reg)$.fitted - 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2015)]
+
+polygon(c(rev(datasubset$Date[which(datasubset$Year==2015)]),datasubset$Date[which(datasubset$Year==2015)]),c(rev(y_up),y_down),col="grey80",border=NA)
+
+points(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], lwd=2, type='b',pch=19,cex=0.25)
+
+lines(datasubset$Date[which(datasubset$Year==2015)], exp(augment(coho.adult.reg)$.fitted)[which(datasubset$Year==2015)], lwd=2,lty=2, col="blue")
+text(datasubset$Date[which(datasubset$Year==2015)][45], 150,"2015",cex=1.5)
+```
+
+```{r plot 2016 coho}
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], lwd=2, type='n',pch=19,cex=0.25,ylim=c(0,200),ylab="",xlab="",cex.lab=1.5)
+
+y_up=exp(augment(coho.adult.reg)$.fitted + 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2016)]
+ 
+y_down=exp(augment(coho.adult.reg)$.fitted - 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2016)]
+
+polygon(c(rev(datasubset$Date[which(datasubset$Year==2016)]),datasubset$Date[which(datasubset$Year==2016)]),c(rev(y_up),y_down),col="grey80",border=NA)
+
+points(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], lwd=2, type='b',pch=19,cex=0.25)
+
+lines(datasubset$Date[which(datasubset$Year==2016)], exp(augment(coho.adult.reg)$.fitted)[which(datasubset$Year==2016)], lwd=2,lty=2, col="blue")
+mtext("Coho Counts",side=2,cex=2,outer=T)
+text(datasubset$Date[which(datasubset$Year==2016)][45], 150,"2016",cex=1.5)
+
+# lines(datasubset$Date[which(datasubset$Year==2016)], exp(augment(coho.adult.reg)$.fitted + 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2016)], lwd=2,lty=3, col="darkgray")
+# 
+# lines(datasubset$Date[which(datasubset$Year==2016)], exp(augment(coho.adult.reg)$.fitted - 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2016)], lwd=2,lty=3, col="darkgray")
+
+# plot 2015
+# plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='b',pch=19,cex=0.25,ylim=c(0,800),lwd=2,ylab="Coho Counts",xlab="")
+# 
+# #add confint augment(coho.adult.reg)
+# lines(datasubset$Date[which(datasubset$Year==2015)], exp(augment(coho.adult.reg)$.fitted)[which(datasubset$Year==2015)], lwd=2,lty=2, col="blue")
+# 
+# lines(datasubset$Date[which(datasubset$Year==2015)], exp(augment(coho.adult.reg)$.fitted + 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2015)], lwd=2,lty=3, col="darkgray")
+# 
+# lines(datasubset$Date[which(datasubset$Year==2015)], exp(augment(coho.adult.reg)$.fitted - 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2015)], lwd=2,lty=3, col="darkgray")
+
+
+#2015 total and predicted salmon
+sum(exp(predict(coho.adult.reg))[which(datasubset$Year==2015)])
+sum(datasubset$Count[which(datasubset$Year==2015)])
+
+#2016 total and predicted salmon
+sum(exp(predict(coho.adult.reg))[which(datasubset$Year==2016)])
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+
+```
+
+```{r fit 2016 only model and apply to 2015}
+datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+
+sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = datasubset[datasubset$Year == "2016", ])
+summary(sockeye.adult.2016.reg)
+
+par(mfrow=c(2,1))
+#plot2016
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l')
+
+lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(sockeye.adult.2016.reg)), lty=2, col="blue")
+
+#plot 2015
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l')
+
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+      exp(coef(sockeye.adult.2015.reg)[1]+coef(sockeye.adult.2015.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2015.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2016.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+
+#2015 total and predicted salmon
+sum(exp(predict(sockeye.adult.2016.reg)))
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+#2016 total and predicted salmon
+sum(exp(predict(sockeye.adult.2016.reg))[which(datasubset$Year==2016)])
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+```
+
+
+Coho_total models
+
+```{r linear model}
+coho.total.2015.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = subset(coho_adult, Cohotype == "Coho_Total" & Year == "2015"))
+summary(coho.total.2015.reg)
+
+# coho.total.2015.reg <- lm(Count ~ QUANT_mean:Q_cfs2, data = subset(coho_adult, Cohotype == "Coho_Total" & Year == "2015"))
+# summary(coho.total.2015.reg)
+
+coho.total.2016.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = subset(coho_adult, Cohotype == "Coho_Total" & Year == "2016"))
+summary(coho.total.2016.reg)
+
+# coho.total.2016.reg <- lm(Count ~ QUANT_mean:Q_cfs2, data = subset(coho_adult, Cohotype == "Coho_Total" & Year == "2016"))
+# summary(coho.total.2016.reg)
+
+tidy(coho.total.2015.reg)
+tidy(coho.total.2016.reg)
+
+# with year interaction term.  year interaction is not sig, which is nice
+datasubset = subset(coho_adult, Cohotype == "Coho_Total" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+
+coho.total.reg <- lm((Count) ~ QUANT_mean:Q_cfs2*Year+Temp_C, data = datasubset)
+summary(coho.total.reg)
+
+par(mfrow=c(2,2))
+plot(coho.total.reg)
+par(mfrow=c(1,1))
+glance(coho.total.reg)
+# augment(coho.total.reg)
+
+#plot2016
+par(mfrow=c(2,1))
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l')
+
+lines(datasubset$Date[which(datasubset$Year==2016)], (predict(coho.total.reg))[which(datasubset$Year==2016)], lty=2, col="blue")
+
+#plot 2015
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l')
+
+lines(datasubset$Date[which(datasubset$Year==2015)], (predict(coho.total.reg))[which(datasubset$Year==2015)], lty=2, col="blue")
+par(mfrow=c(1,1))
+
+#2015 total and predicted salmon
+sum((predict(coho.total.reg))[which(datasubset$Year==2015)])
+sum(datasubset$Count[which(datasubset$Year==2015)])
+
+#2016 total and predicted salmon
+sum((predict(coho.total.reg))[which(datasubset$Year==2016)])
+sum(datasubset$Count[which(datasubset$Year==2016)])
+```
+
+```{r quasipoisson model}
+coho.adult.2015.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2015"))
+summary(coho.adult.2015.reg)
+
+# coho.adult.2015.reg <- glm(Count ~ QUANT_mean:Q_cfs2, family = "quasipoisson", data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2015"))
+# summary(coho.adult.2015.reg)
+
+coho.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2016"))
+summary(coho.adult.2016.reg)
+
+# coho.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2, family = "quasipoisson", data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2016"))
+# summary(coho.adult.2016.reg)
+
+tidy(coho.adult.2015.reg)
+tidy(coho.adult.2016.reg)
+
+# quasipoisson model with year interaction term
+# year interaction is not sig, which is nice
+datasubset = subset(coho_adult, Cohotype == "Coho_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+
+coho.adult.reg <- glm(Count ~ QUANT_mean:Q_cfs2*Year+Temp_C, family = "quasipoisson", data = datasubset)
+summary(coho.adult.reg)
+tidy(coho.adult.reg)
+# augment(coho.adult.reg)
+
+# testing lagged terms
+# coho.adult.reg <- glm(I(QUANT_mean*Q_cfs2)[3:39] ~ Count[1:37] +Count[2:38]+ Temp_C[3:39], family = "quasipoisson", data = datasubset[datasubset$Year==2016,])
+# 
+# coho.adult.reg <- glm(I(QUANT_mean*Q_cfs2)[2:39] ~ Count[1:38] + Temp_C[2:39], family = "quasipoisson", data = datasubset[datasubset$Year==2016,])
+# summary(coho.adult.reg)
+# augment(coho.adult.reg)
+```
+
+```{r plot 2015 coho}
+par(mfrow=c(2,1),mar=c(2,3,1,1),oma=c(1,3,1,1))
+
+plot(datasubset$Date[which(datasubset$Year==2015)],  datasubset$Count[which(datasubset$Year==2015)], lwd=2, type='n',pch=19,cex=0.25,ylim=c(0,200),ylab="",xlab="",cex.lab=1.5)
+
+y_up=exp(augment(coho.adult.reg)$.fitted + 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2015)]
+ 
+y_down=exp(augment(coho.adult.reg)$.fitted - 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2015)]
+
+polygon(c(rev(datasubset$Date[which(datasubset$Year==2015)]),datasubset$Date[which(datasubset$Year==2015)]),c(rev(y_up),y_down),col="grey80",border=NA)
+
+points(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], lwd=2, type='b',pch=19,cex=0.25)
+
+lines(datasubset$Date[which(datasubset$Year==2015)], exp(augment(coho.adult.reg)$.fitted)[which(datasubset$Year==2015)], lwd=2,lty=2, col="blue")
+text(datasubset$Date[which(datasubset$Year==2015)][45], 150,"2015",cex=1.5)
+```
+
+```{r plot 2016 coho}
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], lwd=2, type='n',pch=19,cex=0.25,ylim=c(0,200),ylab="",xlab="",cex.lab=1.5)
+
+y_up=exp(augment(coho.adult.reg)$.fitted + 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2016)]
+ 
+y_down=exp(augment(coho.adult.reg)$.fitted - 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2016)]
+
+polygon(c(rev(datasubset$Date[which(datasubset$Year==2016)]),datasubset$Date[which(datasubset$Year==2016)]),c(rev(y_up),y_down),col="grey80",border=NA)
+
+points(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], lwd=2, type='b',pch=19,cex=0.25)
+
+lines(datasubset$Date[which(datasubset$Year==2016)], exp(augment(coho.adult.reg)$.fitted)[which(datasubset$Year==2016)], lwd=2,lty=2, col="blue")
+mtext("Coho Counts",side=2,cex=2,outer=T)
+text(datasubset$Date[which(datasubset$Year==2016)][45], 150,"2016",cex=1.5)
+
+# lines(datasubset$Date[which(datasubset$Year==2016)], exp(augment(coho.adult.reg)$.fitted + 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2016)], lwd=2,lty=3, col="darkgray")
+# 
+# lines(datasubset$Date[which(datasubset$Year==2016)], exp(augment(coho.adult.reg)$.fitted - 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2016)], lwd=2,lty=3, col="darkgray")
+
+# plot 2015
+# plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='b',pch=19,cex=0.25,ylim=c(0,800),lwd=2,ylab="Coho Counts",xlab="")
+# 
+# #add confint augment(coho.adult.reg)
+# lines(datasubset$Date[which(datasubset$Year==2015)], exp(augment(coho.adult.reg)$.fitted)[which(datasubset$Year==2015)], lwd=2,lty=2, col="blue")
+# 
+# lines(datasubset$Date[which(datasubset$Year==2015)], exp(augment(coho.adult.reg)$.fitted + 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2015)], lwd=2,lty=3, col="darkgray")
+# 
+# lines(datasubset$Date[which(datasubset$Year==2015)], exp(augment(coho.adult.reg)$.fitted - 2*augment(coho.adult.reg)$.se.fit)[which(datasubset$Year==2015)], lwd=2,lty=3, col="darkgray")
+
+
+#2015 total and predicted salmon
+sum(exp(predict(coho.adult.reg))[which(datasubset$Year==2015)])
+sum(datasubset$Count[which(datasubset$Year==2015)])
+
+#2016 total and predicted salmon
+sum(exp(predict(coho.adult.reg))[which(datasubset$Year==2016)])
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+
+```
+
+```{r fit 2016 only model and apply to 2015}
+datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+
+sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = datasubset[datasubset$Year == "2016", ])
+summary(sockeye.adult.2016.reg)
+
+par(mfrow=c(2,1))
+#plot2016
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l')
+
+lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(sockeye.adult.2016.reg)), lty=2, col="blue")
+
+#plot 2015
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l')
+
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+      exp(coef(sockeye.adult.2015.reg)[1]+coef(sockeye.adult.2015.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2015.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2016.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+
+#2015 total and predicted salmon
+sum(exp(predict(sockeye.adult.2016.reg)))
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+#2016 total and predicted salmon
+sum(exp(predict(sockeye.adult.2016.reg))[which(datasubset$Year==2016)])
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+```
+
+
+
+
+Archived code below this
+```{r}
+sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year %in% c("2015", "2016")))
+summary(sockeye.adult.2016.reg)
+
+sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2, family = "quasipoisson", data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year %in% c("2015", "2016")))
+summary(sockeye.adult.2016.reg) 
+ 
+```
+
+```{r confidence interval code snippet, eval = FALSE, include = FALSE}
+x= 1:20
+
+y=6*exp(.2*x + rnorm(20,0,0.5))
+mod=lm(log(y)~x)
+plot(x,y)
+
+newx=seq(min(x),max(x),length.out=100)
+preds=predict(mod,newdata=data.frame(x=newx),interval="confidence")
+plot(log(y)~x, type='n')
+polygon(c(rev(newx),newx),c(rev(preds[,3]),preds[,2]),col="grey80",border=NA)
+points(x,log(y))
+
+plot((y)~x, type='n')
+polygon(c(rev(newx),newx), exp(c(rev(preds[,3]),preds[,2])),col="grey80",border=NA)
+points(x,y)
+lines(newx,exp(preds[,1]))
+
+```
+
+```{r archived code, eval=FALSE, include=FALSE}
+# # calc consistent QUANT_mean from CT_mean}
+# plot(log(QUANT_mean) ~ CT_mean, col = as.numeric(Year), data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == c("2015")))
+# qpcrmod <- lm(log(QUANT_mean) ~ CT_mean, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016"))
+# summary(qpcrmod)
+# tidy(qpcrmod)
+# #          term   estimate  std.error statistic      p.value
+# # 1 (Intercept) 16.9888183 0.92435853  18.37904 3.411463e-20
+# # 2     CT_mean -0.7129658 0.02604225 -27.37728 3.681025e-26
+# # QUANT_mean = exp(16.9888183 - 0.7129658 * CT_mean)
+# 
+# sockeye_adult <- sockeye_adult %>% mutate(QUANT_mean2 = exp(16.9888183 - 0.7129658 * CT_mean))
+# coho_adult <- coho_adult %>% mutate(QUANT_mean2 = exp(16.9888183 - 0.7129658 * CT_mean))
+# plot(log(QUANT_mean2) ~ CT_mean, col = as.numeric(Year), data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == c("2016", "2015")))
+# 
+# plot(QUANT_mean2 ~ QUANT_mean, col = as.numeric(Year), data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == c("2016", "2015")))
+# 
+# plot(QUANT_mean2 ~ QUANT_mean, col = as.numeric(Year), data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == c("2016", "2015")))
+# 
+# plot(QUANT_mean ~ CT_mean, col = as.numeric(Year), data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == c("2016", "2015")))
+# 
+# hist(sockeye_adult$QUANT_mean, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == c("2016", "2015")))
+# hist(sockeye_adult$QUANT_mean2, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == c("2016", "2015")))
+```
+
+```{r archived code2, eval=FALSE, include=FALSE}
+
+
+
+sockeye.adult.2015.reg <- glm(Count ~  Qcorr_qPCR,family = "quasipoisson", data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015"))
+
+plot(CT_mean*log(Gage_Height) ~  Qcorr_qPCR, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015"))
+plot(CT_mean~QUANT_mean , data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015"))
+
+plot((CT_mean)~log(QUANT_mean) , data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016"),pch=2)
+exp(CT_mean)*log(gage)
+log(flow)=a + b*log(gage)
+flow=e^a * gage^b
+
+plot(CT_mean~QUANT_mean , data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2014"),pch=2)
+
+sockeye.adult.2016.reg <- lm(log(Count+1) ~ CT_mean*log(Gage_Height) , data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016"))
+
+sockeye.adult.reg <- lm(log(Count+1)~ CT_mean*log(Gage_Height) , data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults"))
+
+summary(sockeye.adult.2014.reg); AIC(sockeye.adult.2014.reg)
+summary(sockeye.adult.2015.reg); AIC(sockeye.adult.2015.reg)
+summary(sockeye.adult.2016.reg); AIC(sockeye.adult.2016.reg)
+summary(sockeye.adult.reg)
+
+
+
+
+sockeye.adult.2016.reg=lm(log(Count+1)~ CT_mean*log(Q_cfs),data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"&Year=="2016"))
+
+summary(sockeye.adult.2016.reg)
+AIC(sockeye.adult.2016.reg)
+plot( log(subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"&Year=="2016"&!is.na(CT_mean))$Count+1),predict(sockeye.adult.2016.reg));abline(0,1)
+
+sockeye.adult.2016.pois.reg=glm(Count~ CT_mean*log(Q_cfs),family="quasipoisson",data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"&Year=="2016"))
+summary(sockeye.adult.2016.pois.reg)
+plot( log(subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"&Year=="2016"&!is.na(CT_mean))$Count+1),(predict(sockeye.adult.2016.pois.reg)));abline(0,1)
+
+
+
+sockeye.adult.2014.reg=lm(log(Count+1)~ CT_mean+Gage_Height,data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"&Year=="2014"))
+
+sockeye.adult.2015.reg=lm(log(Count+1)~ CT_mean+Gage_Height,data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"&Year=="2015"))
+
+sockeye.adult.2016.reg=lm(log(Count+1)~ CT_mean+Gage_Height,data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"&Year=="2016"))
+
+sockeye.adult.reg=lm(log(Count+1)~ CT_mean*log(Q_cfs),data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"))
+
+summary(sockeye.adult.2014.reg)
+summary(sockeye.adult.2015.reg)
+summary(sockeye.adult.2016.reg)
+summary(sockeye.adult.reg)
+
+
+#Poisson model sockeye
+sockeye.adult.2014.reg=glm((Count)~ CT_mean+Gage_Height,family="quasipoisson",,data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"&Year=="2014"))
+
+sockeye.adult.2015.reg=glm((Count)~ CT_mean+Gage_Height,family="quasipoisson",data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"&Year=="2015"))
+
+sockeye.adult.2016.reg=glm((Count)~ CT_mean+Gage_Height,family="quasipoisson",,data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"&Year=="2016"))
+
+sockeye.adult.reg=lm(log(Count+1)~ CT_mean*log(Q_cfs),data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"))
+
+summary(sockeye.adult.2014.reg)
+summary(sockeye.adult.2015.reg)
+summary(sockeye.adult.2016.reg)
+summary(sockeye.adult.reg)
+
+
+
+sockeye.total.2016.reg=lm(log(Count+0.1)~ CT_mean*log(Q_cfs),data=subset(sockeye_adult,Sockeyetype=="Sockeye_Total"&Year=="2016"))
+summary(sockeye.total.2016.reg)
+
+
+coho.adult.2014.reg=lm(log(Count+0.1)~ CT_mean*log(Q_cfs),data=subset(coho_adult,cohotype=="Coho_Adults"&Year=="2014"))
+coho.adult.2015.reg=lm(log(Count+0.1)~ CT_mean*log(Q_cfs),data=subset(coho_adult,cohotype=="Coho_Adults"&Year=="2015"))
+coho.adult.2016.reg=lm(log(Count+0.1)~ CT_mean*log(Q_cfs),data=subset(coho_adult,cohotype=="Coho_Adults"&Year=="2016"))
+coho.adult.reg=lm(log(Count+0.1)~ CT_mean*log(Q_cfs),data=subset(coho_adult,cohotype=="Coho_Adults"))
+summary(coho.adult.2014.reg)
+summary(coho.adult.2015.reg)
+summary(coho.adult.2016.reg)
+summary(coho.adult.reg)
+
+
+AIC(sockeye.adult.reg)
+
+sockeye.adult.year.reg=lm(log(Count+1) ~ factor(Year,levels=c(2016,2014,2015))* CT_mean*(Gage_Height),data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"))
+summary(sockeye.adult.year.reg) #R2=0.86
+AIC(sockeye.adult.year.reg) #199.9
+
+sockeye.adult.year.reg=lm(log(Count+1) ~ factor(Year,levels=c(2016,2014,2015))+ CT_mean*(Gage_Height),data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"))
+summary(sockeye.adult.year.reg) #R2=0.82
+AIC(sockeye.adult.year.reg) #205.1
+
+sockeye.adult.year.reg=lm(log(Count+1) ~ factor(Year,levels=c(2016,2014,2015))+ CT_mean+(Gage_Height),data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"))
+summary(sockeye.adult.year.reg) #R2=0.81
+AIC(sockeye.adult.year.reg) #205.7
+
+sockeye.adult.year.reg=lm(log(Count+1) ~ factor(Year,levels=c(2016,2014,2015))*(Gage_Height)+ CT_mean,data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"))
+summary(sockeye.adult.year.reg) #R2=0.83
+AIC(sockeye.adult.year.reg) #201.3
+
+
+
+sockeye.adult.year2.reg=lm(log(Count+0.1)~factor(Year,levels=c(2016,2014,2015))*CT_mean*log(Q_cfs),data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"))
+summary(sockeye.adult.year2.reg)
+AIC(sockeye.adult.year2.reg)
+
+sockeye.adult.year3.reg=lm(log(Count+0.1)~factor(Year,levels=c(2016,2014,2015))+CT_mean*log(Q_cfs),data=subset(sockeye_adult,Sockeyetype=="Sockeye_Adults"))
+summary(sockeye.adult.year3.reg)
+AIC(sockeye.adult.year3.reg)
+
+# 
+# plot(salmon_glm$Date, salmon_glm$Qcorr_qPCR, type='l')
+# lines(salmon_glm$Date, exp(predict(CountvsflowDNA)), lty=2, col="blue")
+
+```
