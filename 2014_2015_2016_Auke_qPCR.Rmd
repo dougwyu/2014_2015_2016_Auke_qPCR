@@ -358,6 +358,7 @@ lines(datasubset$Date[which(datasubset$Year==2015)],
     coef(sockeye.adult.2015.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
     coef(sockeye.adult.2015.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)], lty=2, col="blue")
 text(datasubset$Date[which(datasubset$Year==2015)][14.5],550,"2015",cex=1.5) 
+mtext("Sockeye Counts Gaussian models",side=2,cex=1,outer=T)
 par(mfrow=c(1,1))
 
 #2015 total and predicted salmon
@@ -452,6 +453,7 @@ lines(datasubset$Date[which(datasubset$Year==2015)],
     coef(sockeye.adult.2015.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
     coef(sockeye.adult.2015.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
 text(datasubset$Date[which(datasubset$Year==2015)][14.5],550,"2015",cex=1.5) 
+mtext("Sockeye Counts Quasipoisson models",side=2,cex=1,outer=T)
 par(mfrow=c(1,1))
 
 #2015 total and predicted salmon
