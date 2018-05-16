@@ -211,6 +211,10 @@ testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p 
 tidy(sockeye.adult.2015.reg)
 tidy(sockeye.adult.2016.reg)
 
+# scatterplot of fitted ~ observed
+plot(augment(sockeye.adult.2015.reg)$.fitted ~ augment(sockeye.adult.2015.reg)$Count)
+plot(augment(sockeye.adult.2016.reg)$.fitted ~ augment(sockeye.adult.2016.reg)$Count)
+
 # sockeye.adult.2016.reg <- lm(Count ~ QUANT_mean:Q_cfs2, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016"))
 # summary(sockeye.adult.2016.reg)
 
@@ -385,8 +389,12 @@ summary(sockeye.adult.2016.reg)
 # sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2, family = "quasipoisson", data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016"))
 # summary(sockeye.adult.2016.reg)
 
-tidy(sockeye.adult.2015.reg)
+augment(sockeye.adult.2015.reg)
 tidy(sockeye.adult.2016.reg)
+
+# scatterplot of fitted ~ observed
+plot(exp(augment(sockeye.adult.2015.reg)$.fitted) ~ augment(sockeye.adult.2015.reg)$Count)
+plot(exp(augment(sockeye.adult.2016.reg)$.fitted) ~ augment(sockeye.adult.2016.reg)$Count)
 
 # quasipoisson model with year interaction term
 # year interaction is not sig, which is nice
