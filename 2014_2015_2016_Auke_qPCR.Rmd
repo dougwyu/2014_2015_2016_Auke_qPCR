@@ -5,6 +5,7 @@ date: "10/05/2018"
 output: html_document
 ---
 
+Setup
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -117,6 +118,7 @@ plot(coho_adult$Gage_Height, coho_adult$Q_cfs2)
 # log(salmon) = a + C_t(b + d*log(G)) + c*log(G) # d corrects C_t by flow
 ```
 
+Timelines
 ```{r 3 timelines_full fxn for long data, warning=FALSE}
 timelines_full <- function(salmonspecies, start = "2015-01-01", end = "2015-12-31", type = "_adult") { # x == Sockeye, Coho, y == _adult, _juv
 
