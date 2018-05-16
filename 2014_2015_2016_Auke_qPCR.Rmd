@@ -1433,7 +1433,7 @@ tidy(coho.adult.reg)
 
 ```
 
-There is a strong negative quadratic effect of Temp_C, which i think is just coincidental, so i don't include it
+There is a strong negative-quadratic effect of Temp_C, which i think is just coincidental, so i don't include it
 ```{r negative binomial model}
 # library(MASS) # note that MASS::select collides with dplyr::select
 # library(DHARMa)
