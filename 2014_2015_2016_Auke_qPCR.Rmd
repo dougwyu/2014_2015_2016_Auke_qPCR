@@ -284,7 +284,7 @@ points(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(dat
 lines(datasubset$Date[which(datasubset$Year==2015)], augment(sockeye.adult.reg)$.fitted[which(datasubset$Year==2015)], lwd=2,lty=2, col="blue")
 text(datasubset$Date[which(datasubset$Year==2015)][15],750,"2015",cex=1.5) 
  
-```
+``` 
 
 ```{r plot 2016 sockeye for gaussian}
 plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], lwd=2, type='n',pch=19,cex=0.25,ylim=c(0,800),ylab="",xlab="",cex.lab=1.5)
@@ -311,46 +311,66 @@ sum(predict(sockeye.adult.reg)[which(datasubset$Year==2016)])
 sum(datasubset$Count[which(datasubset$Year==2016)])
 ```
 
-# to be done
-```{r fit 2016 only model and apply to 2015}
-# 2016 data
-datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016")
-datasubset <- datasubset %>% dplyr::filter(!is.na(QUANT_mean))
+```{r fit 2016 gaussian model and apply to 2015}
+# 2016 data and model
+datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
 datasubset <- datasubset %>% mutate(QUANTQ = QUANT_mean * Q_cfs2) # to allow plotting of residuals against QUANT_mean * Q_cfs
 
-# sockeye.adult.2016.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016"))
-# summary(sockeye.adult.2016.reg)
-
-sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = datasubset[datasubset$Year == "2016", ])
+sockeye.adult.2016.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = datasubset[datasubset$Year == "2016", ])
 summary(sockeye.adult.2016.reg)
+tidy(sockeye.adult.2016.reg)
+#                term estimate std.error statistic      p.value
+# 1       (Intercept) 293.1952 207.54274  1.412698 1.663320e-01
+# 2            Temp_C -16.5771  12.12875 -1.366761 1.801758e-01
+# 3 QUANT_mean:Q_cfs2 520.7783  72.24677  7.208326 1.753041e-08
+coef(sockeye.adult.2016.reg)[1] # intercept
+coef(sockeye.adult.2016.reg)[2] # Temp_C
+coef(sockeye.adult.2016.reg)[3] # QUANT_mean:Q_cfs
+
+# 2015 data and model
+sockeye.adult.2015.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = datasubset[datasubset$Year == "2015", ])
+summary(sockeye.adult.2015.reg)
+tidy(sockeye.adult.2015.reg)
+#                term  estimate std.error statistic    p.value
+# 1       (Intercept) 693.60927 289.71226  2.394132 0.03243932
+# 2            Temp_C -39.40804  17.08566 -2.306499 0.03819533
+# 3 QUANT_mean:Q_cfs2 885.76286 236.96014  3.738025 0.00248345
+coef(sockeye.adult.2015.reg)[1] # intercept
+coef(sockeye.adult.2015.reg)[2] # Temp_C
+coef(sockeye.adult.2015.reg)[3] # QUANT_mean:Q_cfs
+
 
 par(mfrow=c(2,1))
 #plot2016
-plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l')
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l', ylim=c(0,600))
+lines(datasubset$Date[which(datasubset$Year==2016)], predict(sockeye.adult.2016.reg), lty=2, col="black")
+text(datasubset$Date[which(datasubset$Year==2016)][35],550,"2016",cex=1.5) 
 
-lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(sockeye.adult.2016.reg)), lty=2, col="blue")
-
-#plot 2015
-plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l')
-
-lines(datasubset$Date[which(datasubset$Year==2015)], 
-      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+#plot 2015 with 2016 model
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l', ylim=c(0,600))
 
 lines(datasubset$Date[which(datasubset$Year==2015)], 
-      exp(coef(sockeye.adult.2015.reg)[1]+coef(sockeye.adult.2015.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2015.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+    coef(sockeye.adult.2016.reg)[1] + 
+    coef(sockeye.adult.2016.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
+    coef(sockeye.adult.2016.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)], lty=2, col="black")
 lines(datasubset$Date[which(datasubset$Year==2015)], 
-      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2016.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+    coef(sockeye.adult.2015.reg)[1] + 
+    coef(sockeye.adult.2015.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
+    coef(sockeye.adult.2015.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)], lty=2, col="blue")
+text(datasubset$Date[which(datasubset$Year==2015)][14.5],550,"2015",cex=1.5) 
+par(mfrow=c(1,1))
 
 #2015 total and predicted salmon
-sum(exp(predict(sockeye.adult.2016.reg)))
-sum(datasubset$Count[which(datasubset$Year==2016)])
+sum(predict(sockeye.adult.2015.reg))
+sum(datasubset$Count[which(datasubset$Year==2015)])
 
 #2016 total and predicted salmon
-sum(exp(predict(sockeye.adult.2016.reg))[which(datasubset$Year==2016)])
+sum(predict(sockeye.adult.2016.reg))
 sum(datasubset$Count[which(datasubset$Year==2016)])
 
 ```
 
+Question:   how does the poisson model's log link deal with 0 values?
 ```{r quasipoisson model}
 sockeye.adult.2015.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015")) 
 summary(sockeye.adult.2015.reg) 
@@ -385,12 +405,71 @@ tidy(sockeye.adult.reg)
 
 ```
 
+```{r fit 2016 quasipoisson model and apply to 2015}
+# 2016 data and model
+datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+datasubset <- datasubset %>% mutate(QUANTQ = QUANT_mean * Q_cfs2) # to allow plotting of residuals against QUANT_mean * Q_cfs
+
+sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = datasubset[datasubset$Year == "2016", ])
+summary(sockeye.adult.2016.reg)
+tidy(sockeye.adult.2016.reg)
+#                term   estimate std.error statistic      p.value
+# 1       (Intercept)  9.3130964 3.3091108  2.814380 7.872958e-03
+# 2            Temp_C -0.3771362 0.2010814 -1.875540 6.884682e-02
+# 3 QUANT_mean:Q_cfs2  4.1901427 0.7615046  5.502452 3.214462e-06
+coef(sockeye.adult.2016.reg)[1] # intercept
+coef(sockeye.adult.2016.reg)[2] # Temp_C
+coef(sockeye.adult.2016.reg)[3] # QUANT_mean:Q_cfs
+
+# 2015 data and model
+sockeye.adult.2015.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = datasubset[datasubset$Year == "2015", ])
+summary(sockeye.adult.2015.reg)
+tidy(sockeye.adult.2015.reg)
+#                term   estimate std.error statistic     p.value
+# 1       (Intercept) 11.1338497 2.8339207  3.928780 0.001729471
+# 2            Temp_C -0.4302193 0.1817033 -2.367702 0.034081888
+# 3 QUANT_mean:Q_cfs2  4.5291445 1.4740212  3.072645 0.008903408
+coef(sockeye.adult.2015.reg)[1] # intercept
+coef(sockeye.adult.2015.reg)[2] # Temp_C
+coef(sockeye.adult.2015.reg)[3] # QUANT_mean:Q_cfs
+
+
+par(mfrow=c(2,1))
+#plot2016
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l', ylim=c(0,600))
+lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(sockeye.adult.2016.reg)), lty=2, col="black")
+text(datasubset$Date[which(datasubset$Year==2016)][35],550,"2016",cex=1.5) 
+
+#plot 2015 with 2016 model
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l', ylim=c(0,600))
+
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+    exp(coef(sockeye.adult.2016.reg)[1] + 
+    coef(sockeye.adult.2016.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
+    coef(sockeye.adult.2016.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="black")
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+    exp(coef(sockeye.adult.2015.reg)[1] + 
+    coef(sockeye.adult.2015.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
+    coef(sockeye.adult.2015.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+text(datasubset$Date[which(datasubset$Year==2015)][14.5],550,"2015",cex=1.5) 
+par(mfrow=c(1,1))
+
+#2015 total and predicted salmon
+sum(exp(predict(sockeye.adult.2015.reg)))
+sum(datasubset$Count[which(datasubset$Year==2015)])
+
+#2016 total and predicted salmon
+sum(exp(predict(sockeye.adult.2016.reg)))
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+```
+
 ```{r negative binomial model}
 # library(MASS) # note that MASS::select collides with dplyr::select
 # library(DHARMa)
 
-# 2015
-datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015")
+# 2015 
+datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015") 
 datasubset <- datasubset %>% dplyr::filter(!is.na(QUANT_mean))
 datasubset <- datasubset %>% mutate(QUANTQ = QUANT_mean * Q_cfs2) # to allow plotting of residuals against QUANT_mean * Q_cfs
 
@@ -491,9 +570,68 @@ testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p 
 
 ``` 
 
+```{r fit 2016 negative binomial model and apply to 2015}
+# 2016 data and model
+datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+datasubset <- datasubset %>% mutate(QUANTQ = QUANT_mean * Q_cfs2) # to allow plotting of residuals against QUANT_mean * Q_cfs
+
+sockeye.adult.2016.reg <- glm.nb((Count+1) ~ QUANT_mean:Q_cfs2 + Temp_C, data = datasubset[datasubset$Year == "2016", ])
+summary(sockeye.adult.2016.reg)
+tidy(sockeye.adult.2016.reg)
+#                term   estimate std.error statistic      p.value
+# 1       (Intercept)  8.9590161 3.2681441  2.741316 6.119360e-03
+# 2            Temp_C -0.3999765 0.1913104 -2.090720 3.655317e-02
+# 3 QUANT_mean:Q_cfs2  7.8867279 1.1213802  7.033054 2.020610e-12
+coef(sockeye.adult.2016.reg)[1] # intercept
+coef(sockeye.adult.2016.reg)[2] # Temp_C
+coef(sockeye.adult.2016.reg)[3] # QUANT_mean:Q_cfs
+
+# 2015 data and model
+sockeye.adult.2015.reg <- glm.nb((Count+1) ~ QUANT_mean:Q_cfs2 + Temp_C, data = datasubset[datasubset$Year == "2015", ])
+summary(sockeye.adult.2015.reg)
+tidy(sockeye.adult.2015.reg)
+#                term   estimate std.error statistic      p.value
+# 1       (Intercept) 16.1428216 3.3679066  4.793132 1.641973e-06
+# 2            Temp_C -0.7615229 0.1991564 -3.823744 1.314406e-04
+# 3 QUANT_mean:Q_cfs2  6.4566453 2.7295963  2.365421 1.800957e-02
+coef(sockeye.adult.2015.reg)[1] # intercept
+coef(sockeye.adult.2015.reg)[2] # Temp_C
+coef(sockeye.adult.2015.reg)[3] # QUANT_mean:Q_cfs
+
+
+par(mfrow=c(2,1))
+#plot2016
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l', ylim=c(0,600))
+lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(sockeye.adult.2016.reg)), lty=2, col="black")
+text(datasubset$Date[which(datasubset$Year==2016)][35],550,"2016",cex=1.5) 
+
+#plot 2015 with 2016 model
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l', ylim=c(0,600))
+
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+    exp(coef(sockeye.adult.2016.reg)[1] + 
+    coef(sockeye.adult.2016.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
+    coef(sockeye.adult.2016.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="black")
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+    exp(coef(sockeye.adult.2015.reg)[1] + 
+    coef(sockeye.adult.2015.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
+    coef(sockeye.adult.2015.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+text(datasubset$Date[which(datasubset$Year==2015)][14.5],550,"2015",cex=1.5) 
+par(mfrow=c(1,1))
+
+#2015 total and predicted salmon
+sum(exp(predict(sockeye.adult.2015.reg)))
+sum(datasubset$Count[which(datasubset$Year==2015)])
+
+#2016 total and predicted salmon
+sum(exp(predict(sockeye.adult.2016.reg)))
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+```
+
 ```{r plot 2015 sockeye for negbin and poisson}
 par(mfrow=c(2,1),mar=c(2,3,1,1),oma=c(1,3,1,1))
-
+ 
 plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], lwd=2, type='n',pch=19,cex=0.25,ylim=c(0,800),ylab="",xlab="",cex.lab=1.5)
 
 y_up=exp(augment(sockeye.adult.reg)$.fitted + 2*augment(sockeye.adult.reg)$.se.fit)[which(datasubset$Year==2015)]
@@ -548,39 +686,6 @@ sum(exp(predict(sockeye.adult.reg))[which(datasubset$Year==2016)])
 sum(datasubset$Count[which(datasubset$Year==2016)])
 ```
 
-# to be done
-```{r fit 2016 only model and apply to 2015}
-datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
-
-sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = datasubset[datasubset$Year == "2016", ])
-summary(sockeye.adult.2016.reg)
-
-par(mfrow=c(2,1))
-#plot2016
-plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l')
-
-lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(sockeye.adult.2016.reg)), lty=2, col="blue")
-
-#plot 2015
-plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l')
-
-lines(datasubset$Date[which(datasubset$Year==2015)], 
-      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
-
-lines(datasubset$Date[which(datasubset$Year==2015)], 
-      exp(coef(sockeye.adult.2015.reg)[1]+coef(sockeye.adult.2015.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2015.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
-lines(datasubset$Date[which(datasubset$Year==2015)], 
-      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2016.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
-
-#2015 total and predicted salmon
-sum(exp(predict(sockeye.adult.2016.reg)))
-sum(datasubset$Count[which(datasubset$Year==2016)])
-
-#2016 total and predicted salmon
-sum(exp(predict(sockeye.adult.2016.reg))[which(datasubset$Year==2016)])
-sum(datasubset$Count[which(datasubset$Year==2016)])
-
-```
 
 Coho_adult models
 ```{r linear model}
@@ -697,6 +802,65 @@ glance(coho.adult.reg)
 # sum(datasubset$Count[which(datasubset$Year==2016)])
 ```
 
+```{r fit 2016 gaussian model and apply to 2015}
+# 2016 data and model
+datasubset = subset(coho_adult, Cohotype == "Coho_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+datasubset <- datasubset %>% mutate(QUANTQ = QUANT_mean * Q_cfs2) # to allow plotting of residuals against QUANT_mean * Q_cfs
+
+coho.adult.2016.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = datasubset[datasubset$Year == "2016", ])
+summary(coho.adult.2016.reg)
+tidy(coho.adult.2016.reg)
+#                term   estimate  std.error statistic    p.value
+# 1       (Intercept) -6.7452178  6.3650680 -1.059724 0.29446594
+# 2            Temp_C  0.5311073  0.4327921  1.227165 0.22562409
+# 3 QUANT_mean:Q_cfs2 83.5663613 33.6355552  2.484465 0.01643991
+coef(coho.adult.2016.reg)[1] # intercept
+coef(coho.adult.2016.reg)[2] # Temp_C
+coef(coho.adult.2016.reg)[3] # QUANT_mean:Q_cfs
+
+# 2015 data and model
+coho.adult.2015.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = datasubset[datasubset$Year == "2015", ])
+summary(coho.adult.2015.reg)
+tidy(coho.adult.2015.reg)
+#                term   estimate  std.error statistic      p.value
+# 1       (Intercept) -18.338699  8.6245845 -2.126328 3.887345e-02
+# 2            Temp_C   1.662789  0.7724218  2.152696 3.662184e-02
+# 3 QUANT_mean:Q_cfs2 157.460512 17.2714460  9.116811 7.076874e-12
+coef(coho.adult.2015.reg)[1] # intercept
+coef(coho.adult.2015.reg)[2] # Temp_C
+coef(coho.adult.2015.reg)[3] # QUANT_mean:Q_cfs
+
+
+par(mfrow=c(2,1))
+#plot2016
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l', ylim=c(0,100))
+lines(datasubset$Date[which(datasubset$Year==2016)], predict(coho.adult.2016.reg), lty=2, col="black")
+text(datasubset$Date[which(datasubset$Year==2016)][45],90,"2016",cex=1.5) 
+
+#plot 2015 with 2016 model
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l', ylim=c(0,100))
+
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+    coef(coho.adult.2016.reg)[1] + 
+    coef(coho.adult.2016.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
+    coef(coho.adult.2016.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)], lty=2, col="black")
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+    coef(coho.adult.2015.reg)[1] + 
+    coef(coho.adult.2015.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
+    coef(coho.adult.2015.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)], lty=2, col="blue")
+text(datasubset$Date[which(datasubset$Year==2015)][45],90,"2015",cex=1.5) 
+par(mfrow=c(1,1))
+
+#2015 total and predicted salmon
+sum(predict(coho.adult.2015.reg))
+sum(datasubset$Count[which(datasubset$Year==2015)])
+
+#2016 total and predicted salmon
+sum(predict(coho.adult.2016.reg))
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+```
+
 ```{r plot 2015 coho for gaussian}
 par(mfrow=c(2,1),mar=c(2,3,1,1),oma=c(1,3,1,1))
 
@@ -783,6 +947,65 @@ tidy(coho.adult.reg)
 # coho.adult.reg <- glm(I(QUANT_mean*Q_cfs2)[2:39] ~ Count[1:38] + Temp_C[2:39], family = "quasipoisson", data = datasubset[datasubset$Year==2016,])
 # summary(coho.adult.reg)
 # augment(coho.adult.reg)
+
+```
+
+```{r fit 2016 quasipoisson model and apply to 2015}
+# 2016 data and model
+datasubset = subset(coho_adult, Cohotype == "Coho_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+datasubset <- datasubset %>% mutate(QUANTQ = QUANT_mean * Q_cfs2) # to allow plotting of residuals against QUANT_mean * Q_cfs
+
+coho.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = datasubset[datasubset$Year == "2016", ])
+summary(coho.adult.2016.reg)
+tidy(coho.adult.2016.reg)
+#                term   estimate std.error  statistic    p.value
+# 1       (Intercept) -2.3250730 2.6859604 -0.8656394 0.39090662
+# 2            Temp_C  0.1976748 0.1722527  1.1475866 0.25671154
+# 3 QUANT_mean:Q_cfs2 19.4738980 8.7235963  2.2323245 0.03019675
+coef(coho.adult.2016.reg)[1] # intercept
+coef(coho.adult.2016.reg)[2] # Temp_C
+coef(coho.adult.2016.reg)[3] # QUANT_mean:Q_cfs
+
+# 2015 data and model
+coho.adult.2015.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = datasubset[datasubset$Year == "2015", ])
+summary(coho.adult.2015.reg)
+tidy(coho.adult.2015.reg)
+#                term   estimate  std.error statistic      p.value
+# 1       (Intercept) 0.83942333 0.95454712 0.8793943 3.837585e-01
+# 2            Temp_C 0.07838281 0.08728288 0.8980319 3.738451e-01
+# 3 QUANT_mean:Q_cfs2 6.66879431 0.90099624 7.4015784 2.284307e-09
+coef(coho.adult.2015.reg)[1] # intercept
+coef(coho.adult.2015.reg)[2] # Temp_C
+coef(coho.adult.2015.reg)[3] # QUANT_mean:Q_cfs
+
+
+par(mfrow=c(2,1))
+#plot2016
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l', ylim=c(0,200))
+lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(coho.adult.2016.reg)), lty=2, col="black")
+text(datasubset$Date[which(datasubset$Year==2016)][45],90,"2016",cex=1.5) 
+
+#plot 2015 with 2016 model
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l', ylim=c(0,200))
+
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+    exp(coef(coho.adult.2016.reg)[1] + 
+    coef(coho.adult.2016.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
+    coef(coho.adult.2016.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="black")
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+    exp(coef(coho.adult.2015.reg)[1] + 
+    coef(coho.adult.2015.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
+    coef(coho.adult.2015.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+text(datasubset$Date[which(datasubset$Year==2015)][45],90,"2015",cex=1.5) 
+par(mfrow=c(1,1))
+
+#2015 total and predicted salmon
+sum(exp(predict(coho.adult.2015.reg)))
+sum(datasubset$Count[which(datasubset$Year==2015)])
+
+#2016 total and predicted salmon
+sum(exp(predict(coho.adult.2016.reg)))
+sum(datasubset$Count[which(datasubset$Year==2016)])
 
 ```
 
@@ -889,6 +1112,65 @@ testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p 
 # augment(coho.adult.reg)
 ```
 
+```{r fit 2016 negative binomial model and apply to 2015}
+# 2016 data and model
+datasubset = subset(coho_adult, Cohotype == "Coho_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
+datasubset <- datasubset %>% mutate(QUANTQ = QUANT_mean * Q_cfs2) # to allow plotting of residuals against QUANT_mean * Q_cfs
+
+coho.adult.2016.reg <- glm.nb((Count+1) ~ QUANT_mean:Q_cfs2 + Temp_C, data = datasubset[datasubset$Year == "2016", ])
+summary(coho.adult.2016.reg)
+tidy(coho.adult.2016.reg)
+#                term   estimate  std.error statistic     p.value
+# 1       (Intercept) -1.4427996 1.01160855 -1.426243 0.153798231
+# 2            Temp_C  0.1735155 0.06724403  2.580385 0.009869023
+# 3 QUANT_mean:Q_cfs2 13.9214472 4.95262797  2.810921 0.004939987
+coef(coho.adult.2016.reg)[1] # intercept
+coef(coho.adult.2016.reg)[2] # Temp_C
+coef(coho.adult.2016.reg)[3] # QUANT_mean:Q_cfs
+
+# 2015 data and model
+coho.adult.2015.reg <- glm.nb((Count+1) ~ QUANT_mean:Q_cfs2 + Temp_C, data = datasubset[datasubset$Year == "2015", ])
+summary(coho.adult.2015.reg)
+tidy(coho.adult.2015.reg)
+#                term   estimate  std.error statistic      p.value
+# 1       (Intercept) 0.57812589 0.77317166 0.7477329 4.546213e-01
+# 2            Temp_C 0.09154096 0.06930009 1.3209356 1.865229e-01
+# 3 QUANT_mean:Q_cfs2 9.05192303 1.44430644 6.2673147 3.673273e-10
+coef(coho.adult.2015.reg)[1] # intercept
+coef(coho.adult.2015.reg)[2] # Temp_C
+coef(coho.adult.2015.reg)[3] # QUANT_mean:Q_cfs
+
+
+par(mfrow=c(2,1))
+#plot2016
+plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l', ylim=c(0,200))
+lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(coho.adult.2016.reg)), lty=2, col="black")
+text(datasubset$Date[which(datasubset$Year==2016)][45],150,"2016",cex=1.5) 
+
+#plot 2015 with 2016 model
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l', ylim=c(0,200))
+
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+    exp(coef(coho.adult.2016.reg)[1] + 
+    coef(coho.adult.2016.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
+    coef(coho.adult.2016.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="black")
+lines(datasubset$Date[which(datasubset$Year==2015)], 
+    exp(coef(coho.adult.2015.reg)[1] + 
+    coef(coho.adult.2015.reg)[2] * datasubset$Temp_C[which(datasubset$Year==2015)] +
+    coef(coho.adult.2015.reg)[3] * datasubset$QUANT_mean[which(datasubset$Year==2015)] * datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
+text(datasubset$Date[which(datasubset$Year==2015)][45],150,"2015",cex=1.5) 
+par(mfrow=c(1,1))
+
+#2015 total and predicted salmon
+sum(exp(predict(coho.adult.2015.reg)))
+sum(datasubset$Count[which(datasubset$Year==2015)])
+
+#2016 total and predicted salmon
+sum(exp(predict(coho.adult.2016.reg)))
+sum(datasubset$Count[which(datasubset$Year==2016)])
+
+```
+
 ```{r plot 2015 coho for negbin and poisson}
 par(mfrow=c(2,1),mar=c(2,3,1,1),oma=c(1,3,1,1))
 
@@ -944,40 +1226,6 @@ sum(datasubset$Count[which(datasubset$Year==2015)])
 #2016 total and predicted salmon
 sum(exp(predict(coho.adult.reg))[which(datasubset$Year==2016)])
 sum(datasubset$Count[which(datasubset$Year==2016)])
-```
-
-# not done yet
-```{r fit 2016 only model and apply to 2015}
-datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
-
-sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = datasubset[datasubset$Year == "2016", ])
-summary(sockeye.adult.2016.reg)
-
-par(mfrow=c(2,1))
-#plot2016
-plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l')
-
-lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(sockeye.adult.2016.reg)), lty=2, col="blue")
-
-#plot 2015
-plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l')
-
-lines(datasubset$Date[which(datasubset$Year==2015)], 
-      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
-
-lines(datasubset$Date[which(datasubset$Year==2015)], 
-      exp(coef(sockeye.adult.2015.reg)[1]+coef(sockeye.adult.2015.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2015.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
-lines(datasubset$Date[which(datasubset$Year==2015)], 
-      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2016.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
-
-#2015 total and predicted salmon
-sum(exp(predict(sockeye.adult.2016.reg)))
-sum(datasubset$Count[which(datasubset$Year==2016)])
-
-#2016 total and predicted salmon
-sum(exp(predict(sockeye.adult.2016.reg))[which(datasubset$Year==2016)])
-sum(datasubset$Count[which(datasubset$Year==2016)])
-
 ```
 
 
@@ -1344,40 +1592,6 @@ sum(datasubset$Count[which(datasubset$Year==2015)])
 #2016 total and predicted salmon
 sum(exp(predict(coho.adult.reg))[which(datasubset$Year==2016)])
 sum(datasubset$Count[which(datasubset$Year==2016)])
-```
-
-# still not done
-```{r fit 2016 only model and apply to 2015}
-datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" &!is.na(QUANT_mean) & Year %in% c("2015", "2016"))
-
-sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quasipoisson", data = datasubset[datasubset$Year == "2016", ])
-summary(sockeye.adult.2016.reg)
-
-par(mfrow=c(2,1))
-#plot2016
-plot(datasubset$Date[which(datasubset$Year==2016)], datasubset$Count[which(datasubset$Year==2016)], type='l')
-
-lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(sockeye.adult.2016.reg)), lty=2, col="blue")
-
-#plot 2015
-plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l')
-
-lines(datasubset$Date[which(datasubset$Year==2015)], 
-      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
-
-lines(datasubset$Date[which(datasubset$Year==2015)], 
-      exp(coef(sockeye.adult.2015.reg)[1]+coef(sockeye.adult.2015.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2015.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
-lines(datasubset$Date[which(datasubset$Year==2015)], 
-      exp(coef(sockeye.adult.2016.reg)[1]+coef(sockeye.adult.2016.reg)[2]*datasubset$Temp_C[which(datasubset$Year==2015)]+coef(sockeye.adult.2016.reg)[3]*datasubset$QUANT_mean[which(datasubset$Year==2015)]*datasubset$Q_cfs2[which(datasubset$Year==2015)]), lty=2, col="blue")
-
-#2015 total and predicted salmon
-sum(exp(predict(sockeye.adult.2016.reg)))
-sum(datasubset$Count[which(datasubset$Year==2016)])
-
-#2016 total and predicted salmon
-sum(exp(predict(sockeye.adult.2016.reg))[which(datasubset$Year==2016)])
-sum(datasubset$Count[which(datasubset$Year==2016)])
-
 ```
 
 
