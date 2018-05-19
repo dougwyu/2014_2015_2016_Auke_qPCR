@@ -305,6 +305,7 @@ lines(datasubset$Date[which(datasubset$Year==2016)], augment(sockeye.adult.reg)$
 mtext("Sockeye Counts Gaussian model",side=2,cex=2,outer=T)
 text(datasubset$Date[which(datasubset$Year==2016)][37],750,"2016",cex=1.5)
 
+par(mfrow=c(1,1))
 
 #2015 total and predicted salmon
 sum(predict(sockeye.adult.reg)[which(datasubset$Year==2015)])
