@@ -1,7 +1,7 @@
 ---
 title: "2014_2015_2016_Auke_qPCR"
 author: "Douglas Yu"
-date: "10/05/2018"
+date: "09/06/2018"
 output: html_document
 ---
 
@@ -172,8 +172,8 @@ summary(sockeye.adult.2015.reg)
 # estimate residuals with DHARMa
 plotConventionalResiduals(sockeye.adult.2015.reg)
 simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.2015.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # are uniform except for lowest predicted values
-testUniformity(simulationOutput) # p = 0.375, D = 0.212, overdispersaion ns
+plot(simulationOutput = simulationOutput, quantreg = T) # are uniform except for lowest predicted values
+testUniformity(simulationOutput) # p = 0.3612, D = 0.221, overdispersaion ns
 
 # plot residuals against predictors
 par(mfrow = c(2,2))
@@ -183,8 +183,8 @@ plotResiduals(datasubset$Q_cfs2,  simulationOutput$scaledResiduals) # a bit of h
 plotResiduals(datasubset$QUANTQ,  simulationOutput$scaledResiduals) # underdispersed. higher QUANTQ 
 par(mfrow = c(1,1))
 
-testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.186, DW = 1.57, temp autocorr ns (although the plot shows that residuals increase over time)
-testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.338 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
+testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.472, DW = 1.65, temp autocorr ns (although the plot shows that residuals increase over time)
+testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.5711 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
 
 # sockeye.adult.2015.reg <- lm(Count ~ QUANT_mean:Q_cfs2, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015"))
 # summary(sockeye.adult.2015.reg)
@@ -200,8 +200,9 @@ summary(sockeye.adult.2016.reg)
 # estimate residuals with DHARMa
 plotConventionalResiduals(sockeye.adult.2016.reg)
 simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.2016.reg, n = 1000)
+plot(simulationOutput = simulationOutput, quantreg = T) # are uniform except for lowest predicted values
 plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # overdispersed and non-normal residuals
-testUniformity(simulationOutput) # p = 0.0005, D = 0.326, overdispersaion highly sig
+testUniformity(simulationOutput) # p = 0.00015, D = 0.348, overdispersaion highly sig
 
 # plot residuals against predictors
 par(mfrow = c(2,2))
@@ -211,8 +212,8 @@ plotResiduals(datasubset$Q_cfs2,  simulationOutput$scaledResiduals) # underdispe
 plotResiduals(datasubset$QUANTQ,  simulationOutput$scaledResiduals) # this is the source of the overdispersion
 par(mfrow = c(1,1))
 
-testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.035, DW = 1.43, temp autocorr ns (although the plot shows that residuals increase over time)
-testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.962 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
+testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.034, DW = 1.70, temp autocorr ns (although the plot shows that residuals increase over time)
+testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.678 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
 
 tidy(sockeye.adult.2015.reg)
 tidy(sockeye.adult.2016.reg)
@@ -244,8 +245,8 @@ plotResiduals(datasubset$Q_cfs2,  simulationOutput$scaledResiduals) # a bit of o
 plotResiduals(datasubset$QUANTQ,  simulationOutput$scaledResiduals) # a bit of overdispersion
 par(mfrow = c(1,1))
 
-testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.005, DW = 1.32, temp autocorr 
-testTemporalAutocorrelation(simulationOutput = simulationOutput, plot = T) # p = 0.494 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
+testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.044, DW = 1.47, temp autocorr 
+testTemporalAutocorrelation(simulationOutput = simulationOutput, plot = T) # p = 0.192 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
 
 # conventional residuals for linear models
 plotConventionalResiduals(sockeye.adult.reg)
@@ -330,10 +331,10 @@ datasubset <- datasubset %>% mutate(QUANTQ = QUANT_mean * Q_cfs2) # to allow plo
 sockeye.adult.2016.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = datasubset[datasubset$Year == "2016", ])
 summary(sockeye.adult.2016.reg)
 tidy(sockeye.adult.2016.reg)
-#                term estimate std.error statistic      p.value
-# 1       (Intercept) 293.1952 207.54274  1.412698 1.663320e-01
-# 2            Temp_C -16.5771  12.12875 -1.366761 1.801758e-01
-# 3 QUANT_mean:Q_cfs2 520.7783  72.24677  7.208326 1.753041e-08
+#                term estimate std.error  statistic      p.value
+# 1       (Intercept) 200.3557 211.23011  0.9485186 3.491898e-01
+# 2            Temp_C -11.1493  12.32265 -0.9047809 3.715969e-01
+# 3 QUANT_mean:Q_cfs2 527.0809  73.22268  7.1983282 1.806466e-08
 coef(sockeye.adult.2016.reg)[1] # intercept
 coef(sockeye.adult.2016.reg)[2] # Temp_C
 coef(sockeye.adult.2016.reg)[3] # QUANT_mean:Q_cfs
@@ -342,10 +343,10 @@ coef(sockeye.adult.2016.reg)[3] # QUANT_mean:Q_cfs
 sockeye.adult.2015.reg <- lm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, data = datasubset[datasubset$Year == "2015", ])
 summary(sockeye.adult.2015.reg)
 tidy(sockeye.adult.2015.reg)
-#                term  estimate std.error statistic    p.value
-# 1       (Intercept) 693.60927 289.71226  2.394132 0.03243932
-# 2            Temp_C -39.40804  17.08566 -2.306499 0.03819533
-# 3 QUANT_mean:Q_cfs2 885.76286 236.96014  3.738025 0.00248345
+#                term  estimate std.error statistic      p.value
+# 1       (Intercept) 634.67546 264.19205  2.402326 0.0319456027
+# 2            Temp_C -35.39864  15.62974 -2.264826 0.0412614833
+# 3 QUANT_mean:Q_cfs2 696.66077 155.88840  4.468971 0.0006322252
 coef(sockeye.adult.2015.reg)[1] # intercept
 coef(sockeye.adult.2015.reg)[2] # Temp_C
 coef(sockeye.adult.2015.reg)[3] # QUANT_mean:Q_cfs
@@ -358,7 +359,7 @@ lines(datasubset$Date[which(datasubset$Year==2016)], predict(sockeye.adult.2016.
 text(datasubset$Date[which(datasubset$Year==2016)][35],550,"2016",cex=1.5) 
 
 #plot 2015 with 2016 model
-plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l', ylim=c(0,600))
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l', ylim=c(0,600), col="blue")
 
 lines(datasubset$Date[which(datasubset$Year==2015)], 
     coef(sockeye.adult.2016.reg)[1] + 
@@ -430,9 +431,9 @@ sockeye.adult.2016.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quas
 summary(sockeye.adult.2016.reg)
 tidy(sockeye.adult.2016.reg)
 #                term   estimate std.error statistic      p.value
-# 1       (Intercept)  9.3130964 3.3091108  2.814380 7.872958e-03
-# 2            Temp_C -0.3771362 0.2010814 -1.875540 6.884682e-02
-# 3 QUANT_mean:Q_cfs2  4.1901427 0.7615046  5.502452 3.214462e-06
+# 1       (Intercept)  7.0706885 3.7644405  1.878284 6.846031e-02
+# 2            Temp_C -0.2377161 0.2234705 -1.063747 2.945266e-01
+# 3 QUANT_mean:Q_cfs2  3.9933579 0.8182676  4.880259 2.165027e-05
 coef(sockeye.adult.2016.reg)[1] # intercept
 coef(sockeye.adult.2016.reg)[2] # Temp_C
 coef(sockeye.adult.2016.reg)[3] # QUANT_mean:Q_cfs
@@ -442,9 +443,9 @@ sockeye.adult.2015.reg <- glm(Count ~ QUANT_mean:Q_cfs2 + Temp_C, family = "quas
 summary(sockeye.adult.2015.reg)
 tidy(sockeye.adult.2015.reg)
 #                term   estimate std.error statistic     p.value
-# 1       (Intercept) 11.1338497 2.8339207  3.928780 0.001729471
-# 2            Temp_C -0.4302193 0.1817033 -2.367702 0.034081888
-# 3 QUANT_mean:Q_cfs2  4.5291445 1.4740212  3.072645 0.008903408
+# 1       (Intercept) 10.9280579 2.7423064  3.984988 0.001555447
+# 2            Temp_C -0.4122434 0.1753893 -2.350448 0.035196689
+# 3 QUANT_mean:Q_cfs2  3.1906301 0.9705787  3.287348 0.005889354
 coef(sockeye.adult.2015.reg)[1] # intercept
 coef(sockeye.adult.2015.reg)[2] # Temp_C
 coef(sockeye.adult.2015.reg)[3] # QUANT_mean:Q_cfs
@@ -457,7 +458,7 @@ lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(sockeye.adult.2
 text(datasubset$Date[which(datasubset$Year==2016)][35],550,"2016",cex=1.5) 
 
 #plot 2015 with 2016 model
-plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l', ylim=c(0,600))
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l', ylim=c(0,600), col="blue")
 
 lines(datasubset$Date[which(datasubset$Year==2015)], 
     exp(coef(sockeye.adult.2016.reg)[1] + 
@@ -496,9 +497,9 @@ summary(sockeye.adult.2015.reg) # Temp_C and QUANT*Qcfs both sig
 # estimate residuals with DHARMa
 simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.2015.reg, n = 1000)
 plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # residuals look underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
-testUniformity(simulationOutput) # p = 0.683, D = 0.17, underoverdispersaion ns
+testUniformity(simulationOutput) # p = 0.886, D = 0.14, underoverdispersaion ns
 # testOverdispersion(simulationOutput)  # p = 0.704, dispersion = 0.848, too conservative a test but the parametric version doesn't work for this kind of model
-testZeroInflation(simulationOutput)  # p = 0.488, ratioObsExp = 0
+testZeroInflation(simulationOutput)  # p = 1, ratioObsExp = 0
 
 # plot residuals against predictors
 par(mfrow = c(2,2))
@@ -508,8 +509,8 @@ plotResiduals(datasubset$Q_cfs2,  simulationOutput$scaledResiduals) # a bit of h
 plotResiduals(datasubset$QUANTQ,  simulationOutput$scaledResiduals) # underdispersed. higher QUANTQ 
 par(mfrow = c(1,1))
 
-testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.367, DW = 1.83, temp autocorr ns (although the plot shows that residuals increase over time)
-testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.523 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
+testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.551, DW = 1.71, temp autocorr ns (although the plot shows that residuals increase over time)
+testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.952 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
 
 # sockeye.adult.2015.reg <- glm.nb((Count+1) ~ QUANT_mean:Q_cfs2, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015")) # count + 1 because there's a log link
 # summary(sockeye.adult.2015.reg)
@@ -526,9 +527,9 @@ sockeye.adult.2016.reg <- glm.nb((Count + 1) ~ QUANT_mean:Q_cfs2 + Temp_C, data 
 summary(sockeye.adult.2016.reg)
 simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.2016.reg, n = 1000)
 plotSimulatedResiduals(simulationOutput = simulationOutput) # very few data at high predicted values, but at low predicted values, residuals are nicely uniformly distributed. # we could say that residuals are a bit underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
-testUniformity(simulationOutput) # p = 0.683, D = 0.17, underoverdispersaion ns
-# testOverdispersion(simulationOutput)  # p = 0.704, dispersion = 0.848, too conservative a test but the parametric version doesn't work for this kind of model
-testZeroInflation(simulationOutput)  # p = 0.488, ratioObsExp = 0
+# testUniformity(simulationOutput) # p = 0.021, D = 0.24, underoverdispersaion ns
+testDispersion(simulationOutput)  # p = 0.75, dispersion = 0.872
+testZeroInflation(simulationOutput)  # p = 0.002, ratioObsExp = 0
 
 # plot residuals against predictors
 par(mfrow = c(2,2))
@@ -538,7 +539,7 @@ plotResiduals(datasubset$Q_cfs2, simulationOutput$scaledResiduals) # a bit heter
 plotResiduals(datasubset$QUANTQ, simulationOutput$scaledResiduals) # basically uniform
 par(mfrow = c(1,1))
 
-testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.0046, DW = 1.21, temp autocorr very sig:  more positive residuals later, so should I truncate the time series a bit?  and if so, where?
+testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.1113, DW = 1.50, temp autocorr not sig:  more positive residuals later, so should I truncate the time series a bit?  and if so, where?
 testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.886 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
 
 # sockeye.adult.2016.reg <- glm.nb((Count + 1) ~ QUANT_mean:Q_cfs2, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016")) # count + 1 because there's a log link
@@ -563,9 +564,9 @@ tidy(sockeye.adult.reg)
 # DHARMa residuals
 simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.reg, n = 1000)
 plotSimulatedResiduals(simulationOutput = simulationOutput) # very few data at high predicted values, but at the low predicted values, residuals are nicely uniformly distributed. # we could say that residuals are a bit underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
-testUniformity(simulationOutput) # p = 0.083, D = 0.170, underoverdispersaion ns
-# testOverdispersion(simulationOutput)  # p = 0.704, dispersion = 0.848, too conservative a test but the parametric version doesn't work for this kind of model
-testZeroInflation(simulationOutput)  # p = 1, ratioObsExp = 0
+# testUniformity(simulationOutput) # p = 0.083, D = 0.170, underoverdispersaion ns
+testDispersion(simulationOutput)  # p = 0.694, dispersion = 0.935, too conservative a test but the parametric version doesn't work for this kind of model
+testZeroInflation(simulationOutput)  # p < 2.2e-16, ratioObsExp = 0
 
 # plot residuals against predictors
 par(mfrow = c(2,2))
@@ -575,8 +576,8 @@ plotResiduals(datasubset$Q_cfs2, simulationOutput$scaledResiduals) # underdisper
 plotResiduals(datasubset$QUANTQ, simulationOutput$scaledResiduals) # underdispersed
 par(mfrow = c(1,1))
 
-testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.025, DW = 1.48, temp autocorr very sig:  more positive residuals later, so should I truncate the time series a bit?  and if so, where?
-testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.686, DW = 2.13 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
+testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.044, DW = 1.47, temp autocorr marginally sig:  more positive residuals later, so should I truncate the time series a bit?  and if so, where?
+testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.795, DW = 2.13 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
 
 # testing lagged terms
 # sockeye.adult.reg <- glm(I(QUANT_mean*Q_cfs2)[3:39] ~ Count[1:37] +Count[2:38]+ Temp_C[3:39], family = "quasipoisson", data = datasubset[datasubset$Year==2016,])
@@ -623,7 +624,7 @@ lines(datasubset$Date[which(datasubset$Year==2016)], exp(predict(sockeye.adult.2
 text(datasubset$Date[which(datasubset$Year==2016)][35],550,"2016",cex=1.5) 
 
 #plot 2015 with 2016 model
-plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l', ylim=c(0,600))
+plot(datasubset$Date[which(datasubset$Year==2015)], datasubset$Count[which(datasubset$Year==2015)], type='l', ylim=c(0,600), col="blue")
 
 lines(datasubset$Date[which(datasubset$Year==2015)], 
     exp(coef(sockeye.adult.2016.reg)[1] + 
