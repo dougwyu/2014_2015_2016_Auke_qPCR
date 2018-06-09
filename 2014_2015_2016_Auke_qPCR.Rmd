@@ -106,14 +106,20 @@ coho_juv <- Coholong_all %>% dplyr::filter(
 
 
 # calculate a single Q_cfs value from scratch
-sockeye_adult <- sockeye_adult %>% mutate(Q_cfs2 = 7.48*(Gage_Height - 20.33)^2.5) # coefficients are from the excel spreadsheet:  Salmon_2015_qPCR_count_Qcfs_20180504.xlsx
-plot(sockeye_adult$Gage_Height, sockeye_adult$Q_cfs)
-plot(sockeye_adult$Gage_Height, sockeye_adult$Q_cfs2)
+a = 0.148 # from values calculated in gage_to_Q_Josh_R/
+b = 19.27 # from values calculated in gage_to_Q_Josh_R/ 
+c = 5.236 # from values calculated in gage_to_Q_Josh_R/
+# Q_cfs = a (Gage_Height - b) ^ c
+sockeye_adult <- sockeye_adult %>% mutate(Q_cfs2 = a*(Gage_Height - b)^c) 
+par(mfrow=c(2,2))
+plot(sockeye_adult$Gage_Height, sockeye_adult$Q_cfs, main = "Sockeye Q_cfs")
+plot(sockeye_adult$Gage_Height, sockeye_adult$Q_cfs2, main = "Sockeye Q_cfs2")
 
-coho_adult <- coho_adult %>% mutate(Q_cfs2 = 7.48*(Gage_Height - 20.33)^2.5) # coefficients are from the excel spreadsheet:  Salmon_2015_qPCR_count_Qcfs_20180504.xlsx
-plot(coho_adult$Gage_Height, coho_adult$Q_cfs)
-plot(coho_adult$Gage_Height, coho_adult$Q_cfs2)
-                                                   
+# coho_adult <- coho_adult %>% mutate(Q_cfs2 = 7.48*(Gage_Height - 20.33)^2.5) # coefficients are from the excel spreadsheet:  Salmon_2015_qPCR_count_Qcfs_20180504.xlsx
+coho_adult <- coho_adult %>% mutate(Q_cfs2 = a*(Gage_Height - b)^c)
+plot(coho_adult$Gage_Height, coho_adult$Q_cfs, main = "Coho Q_cfs")
+plot(coho_adult$Gage_Height, coho_adult$Q_cfs2, main = "Coho Q_cfs2")
+par(mfrow=c(1,1))                                                 
 # log(salmon) = a + b*C_t + c*log(G) + d*C_t*log(G)
 # log(salmon) = a + C_t(b + d*log(G)) + c*log(G) # d corrects C_t by flow
 ```
@@ -134,13 +140,13 @@ timelines_full <- function(salmonspecies, start = "2015-01-01", end = "2015-12-3
         
     qpcr <- ggplot(salmon_use, aes(Date, exp(-CT_mean))) + geom_point(size = 0.5) + geom_line() + xlab("") + ylab("exp(qPCR)") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
         
-    Q_cfs <- ggplot(salmon_use, aes(Date, Q_cfs)) + geom_line() + xlab("") + ylab("Q_cfs") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
+    Q_cfs2 <- ggplot(salmon_use, aes(Date, Q_cfs2)) + geom_line() + xlab("") + ylab("Q_cfs2") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
     
     water <- ggplot(salmon_use, aes(Date, log(Gage_Height))) + geom_line() + xlab("") + ylab("Log(Gage Height)") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
     
     temp <- ggplot(salmon_use, aes(Date, Temp_C)) + geom_line() + xlab("") + ylab("Temp_C") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
     
-    plot_grid(counts, qpcrcorrQ, qpcr, Q_cfs, water, temp, nrow = 6, align = "v")
+    plot_grid(counts, qpcrcorrQ, qpcr, Q_cfs2, water, temp, nrow = 6, align = "v")
 }
 ```
 
@@ -476,8 +482,8 @@ sum(datasubset$Count[which(datasubset$Year==2016)])
 ```
 
 ```{r negative binomial model}
-# library(MASS) # note that MASS::select collides with dplyr::select
-# library(DHARMa)
+# library(MASS) # note that MASS::select collides with dplyr::select 
+# library(DHARMa) 
 
 # 2015 
 datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015") 
