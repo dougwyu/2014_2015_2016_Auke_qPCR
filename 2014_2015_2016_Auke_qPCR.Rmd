@@ -71,6 +71,29 @@ names(Sockeyelong_all)
 Sockeyelong_all
 names(Coholong_all)
 Coholong_all
+
+# calculate a new Q_cfs value from scratch
+a <-  0.148 # from values calculated in gage_to_Q_Josh_R/
+b <-  19.27 # from values calculated in gage_to_Q_Josh_R/ 
+c <-  5.236 # from values calculated in gage_to_Q_Josh_R/
+# Q_cfs = a (Gage_Height - b) ^ c
+Sockeyelong_all <- Sockeyelong_all %>% mutate(Q_cfs2 = a*(Gage_Height - b)^c) 
+par(mfrow=c(2,2))
+plot(Sockeyelong_all$Gage_Height, Sockeyelong_all$Q_cfs, main = "Sockeye Q_cfs")
+plot(Sockeyelong_all$Gage_Height, Sockeyelong_all$Q_cfs2, main = "Sockeye Q_cfs2")
+
+# Coholong_all <- Coholong_all %>% mutate(Q_cfs2 = 7.48*(Gage_Height - 20.33)^2.5) # coefficients are from the excel spreadsheet:  Salmon_2015_qPCR_count_Qcfs_20180504.xlsx
+Coholong_all <- Coholong_all %>% mutate(Q_cfs2 = a*(Gage_Height - b)^c)
+plot(Coholong_all$Gage_Height, Coholong_all$Q_cfs, main = "Coho Q_cfs")
+plot(Coholong_all$Gage_Height, Coholong_all$Q_cfs2, main = "Coho Q_cfs2")
+par(mfrow=c(1,1))           
+names(Sockeyelong_all)
+names(Coholong_all)
+
+# calculate a new Qcorr_qPCR value from QUANT_mean * Q_cfs2 # because old Qcorr_qPCR values used different translations of gauge height to Qcfs in different years
+# this only matters for plotting since the models use QUANT_mean * Q_cfs2 directly
+Sockeyelong_all <- Sockeyelong_all %>% mutate(Qcorr_qPCR = QUANT_mean * Q_cfs2) 
+Coholong_all <- Coholong_all %>% mutate(Qcorr_qPCR = QUANT_mean * Q_cfs2)
 ```
 
 ```{r 2 data subsets}
@@ -104,22 +127,6 @@ coho_juv <- Coholong_all %>% dplyr::filter(
     (Date >= as.Date(paste0("2015-",coho.juv.start)) & Date <= as.Date(paste0("2015-",coho.juv.end)))|
     (Date >= as.Date(paste0("2016-",coho.juv.start)) & Date <= as.Date(paste0("2016-",coho.juv.end))))
 
-
-# calculate a single Q_cfs value from scratch
-a = 0.148 # from values calculated in gage_to_Q_Josh_R/
-b = 19.27 # from values calculated in gage_to_Q_Josh_R/ 
-c = 5.236 # from values calculated in gage_to_Q_Josh_R/
-# Q_cfs = a (Gage_Height - b) ^ c
-sockeye_adult <- sockeye_adult %>% mutate(Q_cfs2 = a*(Gage_Height - b)^c) 
-par(mfrow=c(2,2))
-plot(sockeye_adult$Gage_Height, sockeye_adult$Q_cfs, main = "Sockeye Q_cfs")
-plot(sockeye_adult$Gage_Height, sockeye_adult$Q_cfs2, main = "Sockeye Q_cfs2")
-
-# coho_adult <- coho_adult %>% mutate(Q_cfs2 = 7.48*(Gage_Height - 20.33)^2.5) # coefficients are from the excel spreadsheet:  Salmon_2015_qPCR_count_Qcfs_20180504.xlsx
-coho_adult <- coho_adult %>% mutate(Q_cfs2 = a*(Gage_Height - b)^c)
-plot(coho_adult$Gage_Height, coho_adult$Q_cfs, main = "Coho Q_cfs")
-plot(coho_adult$Gage_Height, coho_adult$Q_cfs2, main = "Coho Q_cfs2")
-par(mfrow=c(1,1))                                                 
 # log(salmon) = a + b*C_t + c*log(G) + d*C_t*log(G)
 # log(salmon) = a + C_t(b + d*log(G)) + c*log(G) # d corrects C_t by flow
 ```
@@ -172,8 +179,8 @@ summary(sockeye.adult.2015.reg)
 # estimate residuals with DHARMa
 plotConventionalResiduals(sockeye.adult.2015.reg)
 simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.2015.reg, n = 1000)
-plot(simulationOutput = simulationOutput, quantreg = T) # are uniform except for lowest predicted values
-testUniformity(simulationOutput) # p = 0.3612, D = 0.221, overdispersaion ns
+plot(simulationOutput, quantreg = T) # are uniform except for lowest predicted values
+testUniformity(simulationOutput) # p = 0.3612, D = 0.221, overdispersion ns
 
 # plot residuals against predictors
 par(mfrow = c(2,2))
@@ -184,7 +191,7 @@ plotResiduals(datasubset$QUANTQ,  simulationOutput$scaledResiduals) # underdispe
 par(mfrow = c(1,1))
 
 testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.472, DW = 1.65, temp autocorr ns (although the plot shows that residuals increase over time)
-testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.5711 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
+testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.8432 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
 
 # sockeye.adult.2015.reg <- lm(Count ~ QUANT_mean:Q_cfs2, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015"))
 # summary(sockeye.adult.2015.reg)
@@ -200,20 +207,19 @@ summary(sockeye.adult.2016.reg)
 # estimate residuals with DHARMa
 plotConventionalResiduals(sockeye.adult.2016.reg)
 simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.2016.reg, n = 1000)
-plot(simulationOutput = simulationOutput, quantreg = T) # are uniform except for lowest predicted values
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # overdispersed and non-normal residuals
+plot(simulationOutput, quantreg = T) # overdispersed and non-normal residuals
 testUniformity(simulationOutput) # p = 0.00015, D = 0.348, overdispersaion highly sig
 
 # plot residuals against predictors
 par(mfrow = c(2,2))
 plotResiduals(datasubset$Temp_C,  simulationOutput$scaledResiduals) # a bit of overdispersion
-plotResiduals(datasubset$QUANT_mean,  simulationOutput$scaledResiduals) # a bit of overdispersion
+plotResiduals(datasubset$QUANT_mean,  simulationOutput$scaledResiduals) # overdispersion
 plotResiduals(datasubset$Q_cfs2,  simulationOutput$scaledResiduals) # underdispersed
 plotResiduals(datasubset$QUANTQ,  simulationOutput$scaledResiduals) # this is the source of the overdispersion
 par(mfrow = c(1,1))
 
-testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.034, DW = 1.70, temp autocorr ns (although the plot shows that residuals increase over time)
-testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.678 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
+testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.342, DW = 1.70, temp autocorr ns (although the plot shows that residuals increase over time)
+testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p = 0.216 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
 
 tidy(sockeye.adult.2015.reg)
 tidy(sockeye.adult.2016.reg)
@@ -234,19 +240,19 @@ sockeye.adult.reg <- lm((Count) ~ QUANT_mean:Q_cfs2*Year+Temp_C, data = datasubs
 summary(sockeye.adult.reg)
 
 simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # overdispersed and non-normal residuals
-testUniformity(simulationOutput) # p = 0.002, D = 0.252, overdispersaion highly sig
+plot(simulationOutput, quantreg = T) # overdispersed and non-normal residuals
+testUniformity(simulationOutput) # p = 0.0006121, D = 0.267, overdispersaion highly sig
 
 # plot residuals against predictors
 par(mfrow = c(2,2))
 plotResiduals(datasubset$Temp_C,  simulationOutput$scaledResiduals) # basically uniform
 plotResiduals(datasubset$QUANT_mean,  simulationOutput$scaledResiduals) # a bit of overdispersion
 plotResiduals(datasubset$Q_cfs2,  simulationOutput$scaledResiduals) # a bit of overdispersion
-plotResiduals(datasubset$QUANTQ,  simulationOutput$scaledResiduals) # a bit of overdispersion
+plotResiduals(datasubset$QUANTQ,  simulationOutput$scaledResiduals) # overdispersion
 par(mfrow = c(1,1))
 
 testTemporalAutocorrelation(simulationOutput = simulationOutput, time = datasubset$Date, plot = T) # p = 0.044, DW = 1.47, temp autocorr 
-testTemporalAutocorrelation(simulationOutput = simulationOutput, plot = T) # p = 0.192 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
+testTemporalAutocorrelation(simulationOutput = simulationOutput, plot = T) # p = 0.670 for a random order of datapoints (null expectation of p for truly non-temp-corr data)
 
 # conventional residuals for linear models
 plotConventionalResiduals(sockeye.adult.reg)
@@ -496,7 +502,7 @@ summary(sockeye.adult.2015.reg) # Temp_C and QUANT*Qcfs both sig
 
 # estimate residuals with DHARMa
 simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.2015.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # residuals look underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
+plot(simulationOutput, quantreg = T) # residuals look underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
 testUniformity(simulationOutput) # p = 0.886, D = 0.14, underoverdispersaion ns
 # testOverdispersion(simulationOutput)  # p = 0.704, dispersion = 0.848, too conservative a test but the parametric version doesn't work for this kind of model
 testZeroInflation(simulationOutput)  # p = 1, ratioObsExp = 0
@@ -515,7 +521,7 @@ testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p 
 # sockeye.adult.2015.reg <- glm.nb((Count+1) ~ QUANT_mean:Q_cfs2, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2015")) # count + 1 because there's a log link
 # summary(sockeye.adult.2015.reg)
 # simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.2015.reg, n = 1000)
-# plotSimulatedResiduals(simulationOutput = simulationOutput) # residuals worse than model without Temp_C
+# plot(simulationOutput) # residuals worse than model without Temp_C
 
 # 2016
 datasubset = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016")
@@ -526,7 +532,7 @@ datasubset <- datasubset %>% mutate(QUANTQ = QUANT_mean * Q_cfs2) # to allow plo
 sockeye.adult.2016.reg <- glm.nb((Count + 1) ~ QUANT_mean:Q_cfs2 + Temp_C, data = datasubset) # count + 1 because there's a log link
 summary(sockeye.adult.2016.reg)
 simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.2016.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput) # very few data at high predicted values, but at low predicted values, residuals are nicely uniformly distributed. # we could say that residuals are a bit underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
+plot(simulationOutput) # very few data at high predicted values, but at low predicted values, residuals are nicely uniformly distributed. # we could say that residuals are a bit underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
 # testUniformity(simulationOutput) # p = 0.021, D = 0.24, underoverdispersaion ns
 testDispersion(simulationOutput)  # p = 0.75, dispersion = 0.872
 testZeroInflation(simulationOutput)  # p = 0.002, ratioObsExp = 0
@@ -545,7 +551,7 @@ testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p 
 # sockeye.adult.2016.reg <- glm.nb((Count + 1) ~ QUANT_mean:Q_cfs2, data = subset(sockeye_adult, Sockeyetype == "Sockeye_Adults" & Year == "2016")) # count + 1 because there's a log link
 # summary(sockeye.adult.2016.reg)
 # simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.2016.reg, n = 1000)
-# plotSimulatedResiduals(simulationOutput = simulationOutput)
+# plot(simulationOutput)
 
 tidy(sockeye.adult.2015.reg)
 tidy(sockeye.adult.2016.reg)
@@ -563,7 +569,7 @@ tidy(sockeye.adult.reg)
 
 # DHARMa residuals
 simulationOutput <- simulateResiduals(fittedModel = sockeye.adult.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput) # very few data at high predicted values, but at the low predicted values, residuals are nicely uniformly distributed. # we could say that residuals are a bit underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
+plot(simulationOutput) # very few data at high predicted values, but at the low predicted values, residuals are nicely uniformly distributed. # we could say that residuals are a bit underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
 # testUniformity(simulationOutput) # p = 0.083, D = 0.170, underoverdispersaion ns
 testDispersion(simulationOutput)  # p = 0.694, dispersion = 0.935, too conservative a test but the parametric version doesn't work for this kind of model
 testZeroInflation(simulationOutput)  # p < 2.2e-16, ratioObsExp = 0
@@ -718,7 +724,7 @@ summary(coho.adult.2015.reg)
 # estimate residuals with DHARMa
 plotConventionalResiduals(coho.adult.2015.reg)
 simulationOutput <- simulateResiduals(fittedModel = coho.adult.2015.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # are uniform except for lowest predicted values
+plot(simulationOutput, quantreg = T) # are uniform except for lowest predicted values
 testUniformity(simulationOutput) # p = 0.282, D = 0.141, overdispersaion ns
 
 # plot residuals against predictors
@@ -746,7 +752,7 @@ summary(coho.adult.2016.reg)
 # estimate residuals with DHARMa
 plotConventionalResiduals(coho.adult.2016.reg)
 simulationOutput <- simulateResiduals(fittedModel = coho.adult.2016.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # overdispersed and non-normal residuals
+plot(simulationOutput, quantreg = T) # overdispersed and non-normal residuals
 testUniformity(simulationOutput) # p = 0.0006, D = 0.279, overdispersaion highly sig
 
 # plot residuals against predictors
@@ -775,7 +781,7 @@ coho.adult.reg <- lm((Count) ~ QUANT_mean:Q_cfs2*Year+Temp_C, data = datasubset)
 summary(coho.adult.reg)
 
 simulationOutput <- simulateResiduals(fittedModel = coho.adult.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # overdispersed and non-normal residuals
+plot(simulationOutput, quantreg = T) # overdispersed and non-normal residuals
 testUniformity(simulationOutput) # p = 0.001, D = 0.192, overdispersaion highly sig
 
 # plot residuals against predictors
@@ -1041,7 +1047,7 @@ summary(coho.adult.2015.reg) # Temp_C and QUANT*Qcfs both sig
 
 # estimate residuals with DHARMa
 simulationOutput <- simulateResiduals(fittedModel = coho.adult.2015.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # most predicted points are small and they are uniformly distributed
+plot(simulationOutput, quantreg = T) # most predicted points are small and they are uniformly distributed
 testUniformity(simulationOutput) # p = 0.440, D = 0.124, underoverdispersaion ns
 testZeroInflation(simulationOutput)  # p = 0.943, ratioObsExp = 0
 
@@ -1059,7 +1065,7 @@ testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p 
 # coho.adult.2015.reg <- glm.nb((Count+1) ~ QUANT_mean:Q_cfs2, data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2015")) # count + 1 because there's a log link
 # summary(coho.adult.2015.reg)
 # simulationOutput <- simulateResiduals(fittedModel = coho.adult.2015.reg, n = 1000)
-# plotSimulatedResiduals(simulationOutput = simulationOutput) # residuals worse than model without Temp_C
+# plot(simulationOutput) # residuals worse than model without Temp_C
 
 # 2016
 datasubset = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2016")
@@ -1071,7 +1077,7 @@ summary(coho.adult.2016.reg)
 
 # DHARMa residuals
 simulationOutput <- simulateResiduals(fittedModel = coho.adult.2016.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput) # a bit heteroscedastic
+plot(simulationOutput) # a bit heteroscedastic
 testUniformity(simulationOutput) # p = 0.032, D = 0.200, underoverdispersaion ns
 testZeroInflation(simulationOutput)  # p = 1, ratioObsExp = 0
 
@@ -1089,7 +1095,7 @@ testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p 
 # coho.adult.2016.reg <- glm.nb((Count + 1) ~ QUANT_mean:Q_cfs2, data = subset(coho_adult, Cohotype == "Coho_Adults" & Year == "2016")) # count + 1 because there's a log link
 # summary(coho.adult.2016.reg)
 # simulationOutput <- simulateResiduals(fittedModel = coho.adult.2016.reg, n = 1000)
-# plotSimulatedResiduals(simulationOutput = simulationOutput)
+# plot(simulationOutput)
 
 tidy(coho.adult.2015.reg)
 tidy(coho.adult.2016.reg)
@@ -1107,7 +1113,7 @@ tidy(coho.adult.reg)
 
 # DHARMa residuals
 simulationOutput <- simulateResiduals(fittedModel = coho.adult.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput) # very few data at high predicted values, but at the low predicted values, residuals are nicely uniformly distributed. # we could say that residuals are a bit underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
+plot(simulationOutput) # very few data at high predicted values, but at the low predicted values, residuals are nicely uniformly distributed. # we could say that residuals are a bit underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
 testUniformity(simulationOutput) # p = 0.009, D = 0.163, underoverdispersaion ns
 testZeroInflation(simulationOutput)  # p = 1, ratioObsExp = 0
 
@@ -1260,7 +1266,7 @@ summary(coho.adult.2015.reg)
 # estimate residuals with DHARMa
 plotConventionalResiduals(coho.adult.2015.reg)
 simulationOutput <- simulateResiduals(fittedModel = coho.adult.2015.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # are uniform except for lowest predicted values
+plot(simulationOutput, quantreg = T) # are uniform except for lowest predicted values
 testUniformity(simulationOutput) # p = 0.063, D = 0.182, overdispersaion ns
 
 # plot residuals against predictors
@@ -1288,7 +1294,7 @@ summary(coho.adult.2016.reg)
 # estimate residuals with DHARMa
 plotConventionalResiduals(coho.adult.2016.reg)
 simulationOutput <- simulateResiduals(fittedModel = coho.adult.2016.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # overdispersed and non-normal residuals
+plot(simulationOutput, quantreg = T) # overdispersed and non-normal residuals
 testUniformity(simulationOutput) # p = 0.06, D = 0.279, overdispersaion highly sig
 
 # plot residuals against predictors
@@ -1317,7 +1323,7 @@ coho.adult.reg <- lm((Count) ~ QUANT_mean:Q_cfs2*Year+Temp_C, data = datasubset)
 summary(coho.adult.reg)
 
 simulationOutput <- simulateResiduals(fittedModel = coho.adult.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # a bit overdispersed
+plot(simulationOutput, quantreg = T) # a bit overdispersed
 testUniformity(simulationOutput) # p = 0.011, D = 0.160, overdispersaion highly sig
 
 # plot residuals against predictors
@@ -1466,7 +1472,7 @@ summary(coho.adult.2015.reg) # Temp_C and QUANT*Qcfs both sig
 
 # estimate residuals with DHARMa
 simulationOutput <- simulateResiduals(fittedModel = coho.adult.2015.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T) # most predicted points are small and they are uniformly distributed
+plot(simulationOutput, quantreg = T) # most predicted points are small and they are uniformly distributed
 testUniformity(simulationOutput) # p = 0.933, D = 0.077, underoverdispersaion ns
 testZeroInflation(simulationOutput)  # p = 0.663, ratioObsExp = 0
 
@@ -1484,7 +1490,7 @@ testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p 
 # coho.adult.2015.reg <- glm.nb((Count+1) ~ QUANT_mean:Q_cfs2, data = subset(coho_adult, Cohotype == "Coho_Total" & Year == "2015")) # count + 1 because there's a log link
 # summary(coho.adult.2015.reg)
 # simulationOutput <- simulateResiduals(fittedModel = coho.adult.2015.reg, n = 1000)
-# plotSimulatedResiduals(simulationOutput = simulationOutput) # residuals worse than model without Temp_C
+# plot(simulationOutput) # residuals worse than model without Temp_C
 
 # 2016
 datasubset = subset(coho_adult, Cohotype == "Coho_Total" & Year == "2016")
@@ -1496,7 +1502,7 @@ summary(coho.adult.2016.reg)
 
 # DHARMa residuals
 simulationOutput <- simulateResiduals(fittedModel = coho.adult.2016.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput) # a bit heteroscedastic
+plot(simulationOutput) # a bit heteroscedastic
 testUniformity(simulationOutput) # p = 0.487, D = 0.116, underoverdispersaion ns
 testZeroInflation(simulationOutput)  # p = 0.64, ratioObsExp = 0
 
@@ -1514,7 +1520,7 @@ testTemporalAutocorrelation(simulationOutput = simulationOutput,  plot = T) # p 
 # coho.adult.2016.reg <- glm.nb((Count + 1) ~ QUANT_mean:Q_cfs2, data = subset(coho_adult, Cohotype == "Coho_Total" & Year == "2016")) # count + 1 because there's a log link
 # summary(coho.adult.2016.reg)
 # simulationOutput <- simulateResiduals(fittedModel = coho.adult.2016.reg, n = 1000)
-# plotSimulatedResiduals(simulationOutput = simulationOutput)
+# plot(simulationOutput)
 
 tidy(coho.adult.2015.reg)
 tidy(coho.adult.2016.reg)
@@ -1532,7 +1538,7 @@ tidy(coho.adult.reg)
 
 # DHARMa residuals
 simulationOutput <- simulateResiduals(fittedModel = coho.adult.reg, n = 1000)
-plotSimulatedResiduals(simulationOutput = simulationOutput) # very few data at high predicted values, but at the low predicted values, residuals are nicely uniformly distributed. # we could say that residuals are a bit underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
+plot(simulationOutput) # very few data at high predicted values, but at the low predicted values, residuals are nicely uniformly distributed. # we could say that residuals are a bit underdispersed. This leads to overwide CIs and p-values too small (so we should be more wary of concluding non-significance of a variable)
 testUniformity(simulationOutput) # p = 0.009, D = 0.163, underoverdispersaion ns
 testZeroInflation(simulationOutput)  # p = 1, ratioObsExp = 0
 
@@ -1620,7 +1626,7 @@ Archived code below this
 ```{r DHARMa tutorial from package vignette}
 library(DHARMa)
 simulationOutput <- simulateResiduals(fittedModel = fittedModel, n = 250)
-plotSimulatedResiduals(simulationOutput = simulationOutput)
+plot(simulationOutput)
 plotResiduals(YOURPREDICTOR, simulationOutput$scaledResiduals)
 testUniformity(simulationOutput = simulationOutput)
 testOverdispersion(simulationOutput = simulationOutput) # use refit = T in simulateResiduals()
@@ -1635,7 +1641,7 @@ testData = createData(sampleSize = 500, overdispersion = 2, family = poisson())
 fittedModel <- glmer(observedResponse ~ Environment1 + (1|group) , family = "poisson", data = testData)
 
 simulationOutput <- simulateResiduals(fittedModel = fittedModel)
-plotSimulatedResiduals(simulationOutput = simulationOutput) # too many residuals around 0 and 1
+plot(simulationOutput) # too many residuals around 0 and 1
 testUniformity(simulationOutput = simulationOutput) # standard test
 
 # a more powerful test but slow
@@ -1651,7 +1657,7 @@ fittedModel <- glmer(observedResponse ~ Environment1 + (1|group) , family = "poi
 
 summary(fittedModel)
 simulationOutput <- simulateResiduals(fittedModel = fittedModel)
-plotSimulatedResiduals(simulationOutput = simulationOutput) # too many residuals around 0.5
+plot(simulationOutput) # too many residuals around 0.5
 testUniformity(simulationOutput = simulationOutput)
 
 # zero-inflation example
@@ -1664,7 +1670,7 @@ par(mfrow = c(1,1))
 fittedModel <- glmer(observedResponse ~ Environment1 + I(Environment1^2) + (1|group) , family = "poisson", data = testData)
 
 simulationOutput <- simulateResiduals(fittedModel = fittedModel)
-plotSimulatedResiduals(simulationOutput = simulationOutput) # looks like overdispersion because the model will usually try to find a compromise between the zeros, and the other values, which will lead to excess variance in the residuals.  Note that overdispersion will also lead to excess zeros, so only seeing too many zeros is not a reliable diagnostics for moving towards a zero-inflated model. A reliable differentiation between overdispersion and zero-inflation will usually only be possible when directly comparing alternative models, e.g. through residual comparison / model selection of a model with / without zero-inflation, or by simply fitting a model with zero-inflation and looking at the parameter estimate for the zero-inflation.
+plot(simulationOutput) # looks like overdispersion because the model will usually try to find a compromise between the zeros, and the other values, which will lead to excess variance in the residuals.  Note that overdispersion will also lead to excess zeros, so only seeing too many zeros is not a reliable diagnostics for moving towards a zero-inflated model. A reliable differentiation between overdispersion and zero-inflation will usually only be possible when directly comparing alternative models, e.g. through residual comparison / model selection of a model with / without zero-inflation, or by simply fitting a model with zero-inflation and looking at the parameter estimate for the zero-inflation.
 testZeroInflation(simulationOutput)
 
 # heteroscedasticity example.  difficult to detect with standard residuals plots.  Heteroscedasticity means that there is a systematic dependency of the dispersion / variance on another variable in the model. It is not sufficiently appreciated that also binomial or Poisson models can show heteroscedasticity. Basically, it means that the level of over/underdispersion depends on another parameter. Here an example where we create such data
@@ -1672,7 +1678,7 @@ testData = createData(sampleSize = 500, intercept = 0, overdispersion = function
 fittedModel <- glmer(observedResponse ~ Environment1 + (1|group), family = "poisson", data = testData)
 
 simulationOutput <- simulateResiduals(fittedModel = fittedModel)
-plotSimulatedResiduals(simulationOutput = simulationOutput)
+plot(simulationOutput)
 testUniformity(simulationOutput = simulationOutput)
 
 # fit a model with an overdispersion parameter
@@ -1682,7 +1688,7 @@ fittedModel <- glmer(observedResponse ~ Environment1 + (1|group) + (1|ID), famil
 plotConventionalResiduals(fittedModel)
 
 simulationOutput <- simulateResiduals(fittedModel = fittedModel)
-plotSimulatedResiduals(simulationOutput = simulationOutput)
+plot(simulationOutput)
 testUniformity(simulationOutput = simulationOutput)
 
 # Missing predictors or quadratic effects.  A second test that is typically run for LMs, but not for GL(M)Ms is to plot residuals against the predictors in the model (or potentially predictors that were not in the model) to detect possible misspecifications. Doing this is highly recommended. For that purpose, you can retrieve the residuals via
@@ -1693,7 +1699,7 @@ testData = createData(sampleSize = 200, intercept = 1, fixedEffects = c(1,2), ov
 fittedModel <- glmer(observedResponse ~ Environment1 + Environment2 + (1|group) , family = "poisson", data = testData)
 simulationOutput <- simulateResiduals(fittedModel = fittedModel)
 # plotConventionalResiduals(fittedModel)
-plotSimulatedResiduals(simulationOutput = simulationOutput, quantreg = T)
+plot(simulationOutput, quantreg = T)
 testUniformity(simulationOutput = simulationOutput)
 # It is difficult to see that there is a problem at all in the general plot, but it becomes clear if we plot against the environment
 par(mfrow = c(1,2))
