@@ -153,17 +153,25 @@ timelines_full <- function(salmonspecies, start = "2015-01-01", end = "2015-12-3
     
     temp <- ggplot(salmon_use, aes(Date, Temp_C)) + geom_line() + xlab("") + ylab("Temp_C") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
     
-    plot_grid(counts, qpcrcorrQ, qpcr, Q_cfs2, water, temp, nrow = 6, align = "v")
+    # plot_grid(counts, qpcrcorrQ, qpcr, Q_cfs2, water, temp, nrow = 6, align = "v")
+    plot_grid(counts, qpcrcorrQ, qpcr, Q_cfs2, temp, nrow = 5, align = "v")
 }
 ```
 
-```{r 4 timelines_full usage}
-timelines_full("sockeye") # use sockeye, not Sockeye.  This defaults to the adult datasets
-timelines_full("sockeye", "2015-06-18", "2015-08-01") # after looking at the full timeline, truncating to 01 Aug to prevent measuring dead-salmon DNA in 2016
+```{r 4 timelines_full usage 2015}
+timelines_full("sockeye") # use sockeye, not Sockeye.  This defaults to the 2015 adult datasets
+timelines_full("sockeye", "2015-06-18", "2015-08-01") # after looking at the full timeline, truncating to 01 Aug to prevent measuring dead-salmon DNA in 2016.  Adults only
 timelines_full("sockeye", "2015-04-15", "2015-06-10", "_juv") # downstream weir dates only for smolts
 timelines_full("coho") # use coho, not Coho
 timelines_full("coho", "2015-06-18", "2015-10-30") # after looking at the full timeline
 timelines_full("coho", "2015-04-15", "2015-06-10", "_juv") # downstream weir dates only 
+```
+
+```{r 4 timelines_full usage 2016}
+timelines_full("sockeye", "2016-06-25", "2016-08-01") # after looking at the full timeline, truncating to 01 Aug to prevent measuring dead-salmon DNA in 2016.  Adults only
+timelines_full("sockeye", "2016-04-15", "2016-06-10", "_juv") # downstream weir dates only for smolts
+timelines_full("coho", "2016-06-18", "2016-10-30") # after looking at the full timeline
+# timelines_full("coho", "2016-04-15", "2016-06-10", "_juv") # no qpcr data.  downstream weir dates only
 ```
 
 Sockeye models
