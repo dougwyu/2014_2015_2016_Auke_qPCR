@@ -158,7 +158,7 @@ timelines_full <- function(salmonspecies, start = "2015-01-01", end = "2015-12-3
 ```
 
 ```{r 4 timelines_full usage}
-timelines_full("sockeye") # use sockeye, not Sockeye 
+timelines_full("sockeye") # use sockeye, not Sockeye.  This defaults to the adult datasets
 timelines_full("sockeye", "2015-06-18", "2015-08-01") # after looking at the full timeline, truncating to 01 Aug to prevent measuring dead-salmon DNA in 2016
 timelines_full("sockeye", "2015-04-15", "2015-06-10", "_juv") # downstream weir dates only for smolts
 timelines_full("coho") # use coho, not Coho
