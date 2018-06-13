@@ -146,6 +146,8 @@ timelines_full <- function(salmonspecies, start = "2015-01-01", end = "2015-12-3
     qpcrcorrQ <- ggplot(salmon_use, aes(Date, Qcorr_qPCR)) + geom_point(size = 0.5) + geom_line() + xlab("") + ylab("Qcfs2*QUANT") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
         
     qpcr <- ggplot(salmon_use, aes(Date, exp(-CT_mean))) + geom_point(size = 0.5) + geom_line() + xlab("") + ylab("exp(qPCR)") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
+    
+    QUANT <- ggplot(salmon_use, aes(Date, QUANT_mean)) + geom_point(size = 0.5) + geom_line() + xlab("") + ylab("QUANT") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
         
     Q_cfs2 <- ggplot(salmon_use, aes(Date, Q_cfs2)) + geom_line() + xlab("") + ylab("Q_cfs2") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
     
@@ -154,7 +156,8 @@ timelines_full <- function(salmonspecies, start = "2015-01-01", end = "2015-12-3
     temp <- ggplot(salmon_use, aes(Date, Temp_C)) + geom_line() + xlab("") + ylab("Temp_C") + background_grid(major = "x", minor="x", size.minor = 0.5, colour.minor = "grey90")
     
     # plot_grid(counts, qpcrcorrQ, qpcr, Q_cfs2, water, temp, nrow = 6, align = "v")
-    plot_grid(counts, qpcrcorrQ, qpcr, Q_cfs2, temp, nrow = 5, align = "v")
+    # plot_grid(counts, qpcrcorrQ, qpcr, Q_cfs2, temp, nrow = 5, align = "v")
+    plot_grid(counts, qpcrcorrQ, QUANT, Q_cfs2, temp, nrow = 5, align = "v")
 }
 ```
 
