@@ -6,7 +6,7 @@ library(DHARMa)
 library(tidyverse)
 
 
-setwd("/Users/taaltree/Dropbox/Taal/eDNAproject/2014_2015_2016_Auke_qPCR")
+# setwd("/Users/taaltree/Dropbox/Taal/eDNAproject/2014_2015_2016_Auke_qPCR") # if using the *.Rproj to open RStudio, the working folder will already contain the data files at the top level.
 #Read data
 Sockeyelong_all <- read_tsv("Sockeyelong_all.tsv")
 Sockeyelong_all$Year <- as.factor(Sockeyelong_all$Year)
