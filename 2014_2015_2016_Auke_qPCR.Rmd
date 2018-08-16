@@ -177,6 +177,14 @@ timelines_full("coho", "2016-06-18", "2016-10-30") # after looking at the full t
 # timelines_full("coho", "2016-04-15", "2016-06-10", "_juv") # no qpcr data.  downstream weir dates only
 ```
 
+```{r 4 timelines_full usage 2014}
+timelines_full("sockeye", "2014-06-01", "2014-08-31") # after looking at the full timeline, truncating to 01 Aug to prevent measuring dead-salmon DNA in 2016.  Adults only
+# timelines_full("sockeye", "2014-04-15", "2014-06-10", "_juv") # no qpcr data.  downstream weir dates only for smolts
+timelines_full("coho", "2014-06-01", "2014-10-30") # after looking at the full timeline
+# timelines_full("coho", "2014-04-15", "2014-06-10", "_juv") # no qpcr data.  downstream weir dates only
+```
+
+
 Sockeye models
 ```{r linear model}
 # 2015 data
