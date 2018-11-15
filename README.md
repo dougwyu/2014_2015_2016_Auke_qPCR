@@ -5,3 +5,44 @@
 2014_2015_2016_Auke_qPCR.Rmd contains much additional code used during exploration of the two datasets, which are also included in this repo.
 
 The submitted version of the manuscript is on Biorxiv. The manuscript is in press pending minor revisions at Molecular Ecology Resources (today's date is 14 Nov 2018).
+
+
+Datafile column definitions (Sockeyelong_all.tsv and Coholong_all.tsv)
+
+Date:  Date of sample
+
+Gage_Height:  Height of river in inches
+
+Depth_in:  Depth of river in inches
+
+Q_cfs:  Water flux in cubic feet per second
+
+Temp_C:  water temperature, Celsius
+
+CT_mean:  mean of the CT (qPCR 'threshold cycle')  A relative measure of the concentration of the target molecule in the sample (in our case, the PCR product)
+
+CT_sd:  standard deviation of the CT
+
+QUANT_mean:  mean of the estimated concentration of the target molecule (ng/ul), estimated using the CT_mean and a standardisation curve
+
+QUANT_sd:  standard deviation of the estimated concentration of the target molecule
+
+n_qpcrs:  number of qPCRs carried out per sample
+
+Qcorr_qPCR:  QUANT_mean * Q_cfs (flow-corrected eDNA rate)
+
+date.n:  index number for date
+
+Qcorr_qpcr.lag:  Qcorr_qPCR shifted forward by one day
+
+Qcorr_qpcr.lead:  Qcorr_qPCR shifted backward by one day
+
+Qcorr_qpcr.lead2:  Qcorr_qPCR shifted forward by two days
+
+Qcorr_qpcr.lead3:  Qcorr_qPCR shifted backward by two days
+
+Sockeyetype/Cohotype:  life-history stage
+
+Count:  Number of individuals (the response variable)
+
+Year:  year of sample
