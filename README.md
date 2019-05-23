@@ -4,7 +4,9 @@
 
 2014_2015_2016_Auke_qPCR.Rmd contains much additional code used during exploration of the two datasets, which are also included in this repo.
 
-The submitted version of the manuscript is on Biorxiv. The manuscript is in press pending minor revisions at Molecular Ecology Resources (today's date is 14 Nov 2018).
+The manuscript is now published:
+
+Levi, T., Allen, J.M., Bell, D., Joyce, J., Russell, J.R., Tallmon, D.A., Vulstek, S.C., Yang, C.Y., Yu, D.W. 2019. Environmental DNA for the enumeration and management of Pacific salmon. *Molecular Ecology Resources*. 19:597-608. [https://doi.org/10.1111/1755-0998.12987]
 
 
 Datafile column definitions (Sockeyelong_all.tsv and Coholong_all.tsv)
